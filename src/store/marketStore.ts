@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { finnhubService } from '../services/finnhub';
 import type { StockTicker, MarketSector, PriceHistory } from '../types';
 
 interface MarketState {
@@ -14,51 +15,14 @@ interface MarketState {
   removeTicker: (id: string) => void;
 }
 
-const MOCK_TICKERS: StockTicker[] = [
-  {
-    id: '1',
-    symbol: 'AAPL',
-    name: 'Apple Inc.',
-    price: 178.5,
-    change: 2.3,
-    changePercent: 1.31,
-    sector: 'Technology',
-    market: 'NASDAQ',
-    volume: 52340000,
-  },
-  {
-    id: '2',
-    symbol: 'MSFT',
-    name: 'Microsoft Corporation',
-    price: 378.9,
-    change: -1.2,
-    changePercent: -0.32,
-    sector: 'Technology',
-    market: 'NASDAQ',
-    volume: 23450000,
-  },
-  {
-    id: '3',
-    symbol: 'GOOGL',
-    name: 'Alphabet Inc.',
-    price: 142.8,
-    change: 0.8,
-    changePercent: 0.56,
-    sector: 'Technology',
-    market: 'NASDAQ',
-    volume: 18920000,
-  },
-  {
-    id: '4',
-    symbol: 'TSLA',
-    name: 'Tesla Inc.',
-    price: 242.1,
-    change: 5.4,
-    changePercent: 2.28,
-    sector: 'Automotive',
-    market: 'NASDAQ',
-    volume: 98760000,
-  },
+// Default tickers to track
+const DEFAULT_TICKERS = [
+  { symbol: 'AAPL', name: 'Apple Inc.', sector: 'Technology', market: 'NASDAQ' },
+  { symbol: 'MSFT', name: 'Microsoft Corporation', sector: 'Technology', market: 'NASDAQ' },
+  { symbol: 'GOOGL', name: 'Alphabet Inc.', sector: 'Technology', market: 'NASDAQ' },
+  { symbol: 'TSLA', name: 'Tesla Inc.', sector: 'Automotive', market: 'NASDAQ' },
+  { symbol: 'JPM', name: 'JPMorgan Chase & Co.', sector: 'Financial Services', market: 'NYSE' },
+  { symbol: 'JNJ', name: 'Johnson & Johnson', sector: 'Healthcare', market: 'NYSE' },
 ];
 
 const MOCK_SECTORS: MarketSector[] = [
@@ -108,10 +72,34 @@ export const useMarketStore = create<MarketState>((set, get) => ({
 
   fetchTickers: async () => {
     set({ isLoading: true });
-    // TODO: Replace with real market data API (Alpha Vantage, IEX Cloud, etc.)
-    // For now, using mock data until API is integrated
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    set({ tickers: MOCK_TICKERS, isLoading: false });
+
+    try {
+      // Fetch real-time quotes from Finnhub
+      const quotes = await finnhubService.getBatchQuotes(
+        DEFAULT_TICKERS.map((t) => t.symbol)
+      );
+
+      const tickers: StockTicker[] = DEFAULT_TICKERS.map((ticker, index) => {
+        const quote = quotes[index];
+
+        return {
+          id: (index + 1).toString(),
+          symbol: ticker.symbol,
+          name: ticker.name,
+          sector: ticker.sector,
+          market: ticker.market,
+          price: quote?.c || 0,
+          change: quote?.d || 0,
+          changePercent: quote?.dp || 0,
+          volume: 0, // Finnhub basic API doesn't provide volume in quote endpoint
+        };
+      });
+
+      set({ tickers, isLoading: false });
+    } catch (error) {
+      console.error('Error fetching market data:', error);
+      set({ tickers: [], isLoading: false });
+    }
   },
 
   fetchSectors: async () => {
@@ -121,15 +109,58 @@ export const useMarketStore = create<MarketState>((set, get) => ({
 
   fetchPriceHistory: async (symbol: string) => {
     set({ isLoading: true });
-    await new Promise((resolve) => setTimeout(resolve, 300));
 
-    const ticker = get().tickers.find((t) => t.symbol === symbol);
-    if (ticker) {
+    try {
+      const ticker = get().tickers.find((t) => t.symbol === symbol);
+
+      if (!ticker) {
+        set({ isLoading: false });
+        return;
+      }
+
+      // Get last 30 days of candle data
+      const now = Math.floor(Date.now() / 1000);
+      const thirtyDaysAgo = now - 30 * 24 * 60 * 60;
+
+      const candleData = await finnhubService.getCandles(
+        symbol,
+        'D',
+        thirtyDaysAgo,
+        now
+      );
+
+      let priceHistory: PriceHistory[] = [];
+
+      if (candleData && candleData.s === 'ok') {
+        // Convert Finnhub candle data to our format
+        priceHistory = candleData.t.map((timestamp: number, index: number) => ({
+          date: new Date(timestamp * 1000).toISOString().split('T')[0],
+          open: Math.round(candleData.o[index] * 100) / 100,
+          high: Math.round(candleData.h[index] * 100) / 100,
+          low: Math.round(candleData.l[index] * 100) / 100,
+          close: Math.round(candleData.c[index] * 100) / 100,
+          volume: candleData.v[index],
+        }));
+      } else {
+        // Fallback to generated data if API fails
+        priceHistory = generatePriceHistory(ticker.price);
+      }
+
       set({
         selectedTicker: ticker,
-        priceHistory: generatePriceHistory(ticker.price),
+        priceHistory,
         isLoading: false,
       });
+    } catch (error) {
+      console.error('Error fetching price history:', error);
+      const ticker = get().tickers.find((t) => t.symbol === symbol);
+      if (ticker) {
+        set({
+          selectedTicker: ticker,
+          priceHistory: generatePriceHistory(ticker.price),
+          isLoading: false,
+        });
+      }
     }
   },
 
