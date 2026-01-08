@@ -1,52 +1,16 @@
 import { create } from 'zustand';
+import { supabase } from '../lib/supabase';
 import type { Document } from '../types';
 
 interface DocumentState {
   documents: Document[];
   isLoading: boolean;
   fetchDocuments: (userId?: string) => Promise<void>;
-  uploadDocument: (doc: Omit<Document, 'id' | 'uploadDate'>) => void;
-  signDocument: (id: string) => void;
-  updateDocumentStatus: (id: string, status: Document['status']) => void;
-  deleteDocument: (id: string) => void;
+  uploadDocument: (doc: Omit<Document, 'id' | 'uploadDate'>) => Promise<void>;
+  signDocument: (id: string) => Promise<void>;
+  updateDocumentStatus: (id: string, status: Document['status']) => Promise<void>;
+  deleteDocument: (id: string) => Promise<void>;
 }
-
-const MOCK_DOCUMENTS: Document[] = [
-  {
-    id: '1',
-    title: 'Investment Agreement 2025',
-    type: 'pdf',
-    uploadDate: '2025-01-05',
-    size: 1024567,
-    status: 'pending',
-    requiresSignature: true,
-    assignedUsers: ['2'],
-    url: '#',
-  },
-  {
-    id: '2',
-    title: 'Q4 2024 Performance Report',
-    type: 'pdf',
-    uploadDate: '2025-01-02',
-    size: 2048123,
-    status: 'viewed',
-    requiresSignature: false,
-    assignedUsers: ['2'],
-    url: '#',
-  },
-  {
-    id: '3',
-    title: 'Tax Document 2024',
-    type: 'pdf',
-    uploadDate: '2024-12-28',
-    size: 512456,
-    status: 'signed',
-    requiresSignature: true,
-    signedDate: '2024-12-30',
-    assignedUsers: ['2'],
-    url: '#',
-  },
-];
 
 export const useDocumentStore = create<DocumentState>((set) => ({
   documents: [],
@@ -54,50 +18,151 @@ export const useDocumentStore = create<DocumentState>((set) => ({
 
   fetchDocuments: async (userId?: string) => {
     set({ isLoading: true });
-    await new Promise((resolve) => setTimeout(resolve, 300));
 
-    let docs = MOCK_DOCUMENTS;
-    if (userId) {
-      docs = docs.filter((doc) => doc.assignedUsers.includes(userId));
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        set({ documents: [], isLoading: false });
+        return;
+      }
+
+      let query = supabase
+        .from('documents')
+        .select('*')
+        .order('upload_date', { ascending: false });
+
+      // If userId is provided, filter by assigned users (for regular users)
+      // Otherwise show all documents (for admins)
+      if (userId) {
+        query = query.contains('assigned_users', [userId]);
+      }
+
+      const { data: docs, error } = await query;
+
+      if (error) throw error;
+
+      const documents: Document[] = docs?.map((doc) => ({
+        id: doc.id,
+        title: doc.title,
+        type: doc.type,
+        uploadDate: doc.upload_date,
+        size: doc.size,
+        status: doc.status,
+        requiresSignature: doc.requires_signature,
+        signedDate: doc.signed_date,
+        assignedUsers: doc.assigned_users,
+        url: doc.url,
+      })) || [];
+
+      set({ documents, isLoading: false });
+    } catch (error) {
+      console.error('Fetch documents error:', error);
+      set({ documents: [], isLoading: false });
     }
-
-    set({ documents: docs, isLoading: false });
   },
 
-  uploadDocument: (doc: Omit<Document, 'id' | 'uploadDate'>) => {
-    const newDoc: Document = {
-      ...doc,
-      id: Date.now().toString(),
-      uploadDate: new Date().toISOString().split('T')[0],
-    };
-    set((state) => ({ documents: [...state.documents, newDoc] }));
+  uploadDocument: async (doc: Omit<Document, 'id' | 'uploadDate'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('documents')
+        .insert({
+          title: doc.title,
+          type: doc.type,
+          size: doc.size,
+          status: doc.status,
+          requires_signature: doc.requiresSignature,
+          assigned_users: doc.assignedUsers,
+          url: doc.url,
+          upload_date: new Date().toISOString().split('T')[0],
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        const newDoc: Document = {
+          id: data.id,
+          title: data.title,
+          type: data.type,
+          uploadDate: data.upload_date,
+          size: data.size,
+          status: data.status,
+          requiresSignature: data.requires_signature,
+          assignedUsers: data.assigned_users,
+          url: data.url,
+        };
+        set((state) => ({ documents: [...state.documents, newDoc] }));
+      }
+    } catch (error) {
+      console.error('Upload document error:', error);
+    }
   },
 
-  signDocument: (id: string) => {
-    set((state) => ({
-      documents: state.documents.map((doc) =>
-        doc.id === id
-          ? {
-              ...doc,
-              status: 'signed' as const,
-              signedDate: new Date().toISOString().split('T')[0],
-            }
-          : doc
-      ),
-    }));
+  signDocument: async (id: string) => {
+    try {
+      const signedDate = new Date().toISOString().split('T')[0];
+
+      const { error } = await supabase
+        .from('documents')
+        .update({
+          status: 'signed',
+          signed_date: signedDate,
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      set((state) => ({
+        documents: state.documents.map((doc) =>
+          doc.id === id
+            ? {
+                ...doc,
+                status: 'signed' as const,
+                signedDate,
+              }
+            : doc
+        ),
+      }));
+    } catch (error) {
+      console.error('Sign document error:', error);
+    }
   },
 
-  updateDocumentStatus: (id: string, status: Document['status']) => {
-    set((state) => ({
-      documents: state.documents.map((doc) =>
-        doc.id === id ? { ...doc, status } : doc
-      ),
-    }));
+  updateDocumentStatus: async (id: string, status: Document['status']) => {
+    try {
+      const { error } = await supabase
+        .from('documents')
+        .update({ status })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      set((state) => ({
+        documents: state.documents.map((doc) =>
+          doc.id === id ? { ...doc, status } : doc
+        ),
+      }));
+    } catch (error) {
+      console.error('Update document status error:', error);
+    }
   },
 
-  deleteDocument: (id: string) => {
-    set((state) => ({
-      documents: state.documents.filter((doc) => doc.id !== id),
-    }));
+  deleteDocument: async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      set((state) => ({
+        documents: state.documents.filter((doc) => doc.id !== id),
+      }));
+    } catch (error) {
+      console.error('Delete document error:', error);
+    }
   },
 }));

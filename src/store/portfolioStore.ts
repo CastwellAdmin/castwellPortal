@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { supabase } from '../lib/supabase';
 import type { PortfolioAsset, PortfolioSummary, PerformanceData } from '../types';
 
 interface PortfolioState {
@@ -8,50 +9,6 @@ interface PortfolioState {
   fetchPortfolio: () => Promise<void>;
   fetchPerformanceHistory: () => Promise<void>;
 }
-
-// Mock data
-const MOCK_ASSETS: PortfolioAsset[] = [
-  {
-    id: '1',
-    symbol: 'AAPL',
-    name: 'Apple Inc.',
-    quantity: 50,
-    purchasePrice: 150,
-    currentPrice: 178.5,
-    sector: 'Technology',
-    market: 'NASDAQ',
-  },
-  {
-    id: '2',
-    symbol: 'MSFT',
-    name: 'Microsoft Corporation',
-    quantity: 30,
-    purchasePrice: 310,
-    currentPrice: 378.9,
-    sector: 'Technology',
-    market: 'NASDAQ',
-  },
-  {
-    id: '3',
-    symbol: 'JPM',
-    name: 'JPMorgan Chase & Co.',
-    quantity: 25,
-    purchasePrice: 140,
-    currentPrice: 168.2,
-    sector: 'Financial Services',
-    market: 'NYSE',
-  },
-  {
-    id: '4',
-    symbol: 'JNJ',
-    name: 'Johnson & Johnson',
-    quantity: 40,
-    purchasePrice: 160,
-    currentPrice: 155.8,
-    sector: 'Healthcare',
-    market: 'NYSE',
-  },
-];
 
 const generatePerformanceHistory = (): PerformanceData[] => {
   const data: PerformanceData[] = [];
@@ -80,34 +37,90 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
 
   fetchPortfolio: async () => {
     set({ isLoading: true });
-    await new Promise((resolve) => setTimeout(resolve, 500));
 
-    const totalValue = MOCK_ASSETS.reduce(
-      (sum, asset) => sum + asset.quantity * asset.currentPrice,
-      0
-    );
-    const totalCost = MOCK_ASSETS.reduce(
-      (sum, asset) => sum + asset.quantity * asset.purchasePrice,
-      0
-    );
-    const totalGain = totalValue - totalCost;
-    const totalGainPercent = (totalGain / totalCost) * 100;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
 
-    set({
-      portfolio: {
-        totalValue,
-        totalGain,
-        totalGainPercent,
-        assets: MOCK_ASSETS,
-      },
-      isLoading: false,
-    });
+      if (!user) {
+        set({ portfolio: null, isLoading: false });
+        return;
+      }
+
+      const { data: assets, error } = await supabase
+        .from('portfolio_assets')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      const portfolioAssets: PortfolioAsset[] = assets?.map((asset) => ({
+        id: asset.id,
+        symbol: asset.symbol,
+        name: asset.name,
+        quantity: asset.quantity,
+        purchasePrice: asset.purchase_price,
+        currentPrice: asset.current_price,
+        sector: asset.sector,
+        market: asset.market,
+      })) || [];
+
+      const totalValue = portfolioAssets.reduce(
+        (sum, asset) => sum + asset.quantity * asset.currentPrice,
+        0
+      );
+      const totalCost = portfolioAssets.reduce(
+        (sum, asset) => sum + asset.quantity * asset.purchasePrice,
+        0
+      );
+      const totalGain = totalValue - totalCost;
+      const totalGainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
+
+      set({
+        portfolio: {
+          totalValue,
+          totalGain,
+          totalGainPercent,
+          assets: portfolioAssets,
+        },
+        isLoading: false,
+      });
+    } catch (error) {
+      console.error('Fetch portfolio error:', error);
+      set({ portfolio: null, isLoading: false });
+    }
   },
 
   fetchPerformanceHistory: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    set({
-      performanceHistory: generatePerformanceHistory(),
-    });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        set({ performanceHistory: [] });
+        return;
+      }
+
+      const { data: performance, error } = await supabase
+        .from('portfolio_performance')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: true });
+
+      if (error) throw error;
+
+      if (performance && performance.length > 0) {
+        const performanceData: PerformanceData[] = performance.map((p) => ({
+          date: p.date,
+          value: p.value,
+        }));
+        set({ performanceHistory: performanceData });
+      } else {
+        // Fallback to generated data if no performance history exists
+        set({ performanceHistory: generatePerformanceHistory() });
+      }
+    } catch (error) {
+      console.error('Fetch performance history error:', error);
+      // Fallback to generated data on error
+      set({ performanceHistory: generatePerformanceHistory() });
+    }
   },
 }));

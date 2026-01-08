@@ -108,6 +108,8 @@ export const useMarketStore = create<MarketState>((set, get) => ({
 
   fetchTickers: async () => {
     set({ isLoading: true });
+    // TODO: Replace with real market data API (Alpha Vantage, IEX Cloud, etc.)
+    // For now, using mock data until API is integrated
     await new Promise((resolve) => setTimeout(resolve, 300));
     set({ tickers: MOCK_TICKERS, isLoading: false });
   },
