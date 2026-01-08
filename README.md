@@ -1,73 +1,163 @@
-# React + TypeScript + Vite
+# Castwell Client Dashboard Portal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, high-performance investment and client management dashboard built with Vite, React, TypeScript, and Supabase.
 
-Currently, two official plugins are available:
+## 🌟 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Client Dashboard
+- **Portfolio Management**: Track assets, view allocations, and monitor performance
+- **Market Data**: Live ticker watchlist, detailed charts, and sector analysis
+- **Documents**: View, download, and digitally sign important documents
+- **Payments**: Complete transaction history and statements
+- **Learning Center**: Market education with categorized articles about market fundamentals, sectors, and analysis
+- **Profile Management**: Update personal information and preferences
 
-## React Compiler
+### Admin Dashboard
+- **Platform Overview**: Key metrics, user activity, and system health
+- **User Management**: Complete CRUD operations for user accounts (including password resets)
+- **Market Management**: Add and manage stock tickers
+- **Document Management**: Upload documents and assign to users
+- **Platform Settings**: Configure system settings
+- **Audit Logs**: Track all administrative actions
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🛠️ Tech Stack
 
-## Expanding the ESLint configuration
+- **Frontend**: Vite + React 18 + TypeScript
+- **Routing**: React Router v6
+- **State Management**: Zustand
+- **Styling**: Tailwind CSS v3
+- **Charts**: Recharts
+- **Icons**: React Icons
+- **Backend**: Supabase (PostgreSQL + Auth + Storage)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 📋 Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js 18+ and npm
+- Supabase account (free tier works)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 🚀 Quick Start
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 1. Clone and Install
+
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Set Up Supabase
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1. Create a project at https://supabase.com
+2. Run the SQL schema from `supabase-setup.sql` in your Supabase SQL Editor
+3. Create a storage bucket named `documents` (private)
+4. Copy your project URL and anon key
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 3. Configure Environment
+
+```bash
+cp .env.example .env
 ```
+
+Edit `.env`:
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+### 4. Create Admin User
+
+In Supabase dashboard > Authentication > Users:
+1. Add a new user
+2. Go to SQL Editor and run:
+
+```sql
+UPDATE public.profiles
+SET role = 'admin'
+WHERE email = 'your-admin@email.com';
+```
+
+### 5. Run Development Server
+
+```bash
+npm run dev
+```
+
+Visit http://localhost:5173
+
+## 📁 Project Structure
+
+```
+src/
+├── components/         # Reusable UI components
+│   ├── charts/        # Chart components (Line, Pie, Bar)
+│   ├── forms/         # Form inputs and buttons
+│   ├── layout/        # Layout wrappers (User/Admin)
+│   ├── modals/        # Modal dialogs
+│   └── tables/        # Data tables
+├── pages/             # Route pages
+│   ├── auth/          # Login, forgot password, etc.
+│   ├── user/          # Client dashboard pages
+│   └── admin/         # Admin dashboard pages
+├── store/             # Zustand state stores
+├── types/             # TypeScript type definitions
+├── lib/               # Utilities (Supabase client)
+└── App.tsx            # Main app with routing
+```
+
+## 🔒 Security Features
+
+- Row Level Security (RLS) policies in Supabase
+- Role-based access control (User/Admin)
+- Protected routes with authentication checks
+- Secure document storage with signed URLs
+- **Password management**: Only admins can reset user passwords
+- **Learning Center**: Market-focused education (user-facing only)
+
+## 📚 Available Scripts
+
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+```
+
+## 🔗 Integration Guide
+
+See `SUPABASE_INTEGRATION_GUIDE.md` for detailed instructions on:
+- Setting up Supabase database
+- Configuring storage buckets
+- Updating stores to use Supabase
+- Implementing file uploads
+- Adding real-time subscriptions
+
+## 📊 Database Schema
+
+Complete SQL schema available in `supabase-setup.sql`
+
+Key tables:
+- `profiles` - User accounts extending Supabase auth
+- `market_tickers` - Stock ticker data
+- `portfolio_assets` - User portfolio holdings
+- `documents` - Document metadata
+- `payments` - Transaction history
+- `articles` - Learning center content (market-focused)
+
+## 🚢 Deployment
+
+### Build for Production
+
+```bash
+npm run build
+```
+
+Outputs to `dist/` directory.
+
+### Deploy Options
+
+- **Vercel**: Connect GitHub repo for automatic deploys
+- **Netlify**: Drag & drop `dist` folder
+- **Cloudflare Pages**: Connect repo or upload build
+
+**Environment Variables**: Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in your deployment platform.
+
+---
+
+Built with ❤️ for Castwell

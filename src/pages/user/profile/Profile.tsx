@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import { Card } from '../../../components/Card';
 import { Input } from '../../../components/forms/Input';
@@ -91,20 +90,6 @@ export default function Profile() {
             </div>
           )}
         </form>
-      </Card>
-
-      <Card title="Security">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-gray-900">Password</p>
-              <p className="text-sm text-gray-600">Last changed 30 days ago</p>
-            </div>
-            <Link to="/dashboard/profile/security">
-              <Button variant="outline">Change Password</Button>
-            </Link>
-          </div>
-        </div>
       </Card>
 
       <Card title="Preferences">

@@ -24,7 +24,6 @@ import Payments from './pages/user/payments/Payments';
 import LearningCenter from './pages/user/learning/LearningCenter';
 import ArticleDetail from './pages/user/learning/ArticleDetail';
 import Profile from './pages/user/profile/Profile';
-import Security from './pages/user/profile/Security';
 
 // Admin pages
 import AdminLayout from './components/layout/AdminLayout';
@@ -34,9 +33,6 @@ import UserDetail from './pages/admin/users/UserDetail';
 import CreateUser from './pages/admin/users/CreateUser';
 import MarketManagement from './pages/admin/markets/MarketManagement';
 import DocumentManagement from './pages/admin/documents/DocumentManagement';
-import LearningManagement from './pages/admin/learning/LearningManagement';
-import CreateArticle from './pages/admin/learning/CreateArticle';
-import EditArticle from './pages/admin/learning/EditArticle';
 import Settings from './pages/admin/settings/Settings';
 import AuditLogs from './pages/admin/settings/AuditLogs';
 
@@ -89,7 +85,6 @@ function App() {
           <Route path="learning/:slug" element={<ArticleDetail />} />
 
           <Route path="profile" element={<Profile />} />
-          <Route path="profile/security" element={<Security />} />
         </Route>
 
         {/* Admin routes */}
@@ -111,10 +106,6 @@ function App() {
           <Route path="markets" element={<MarketManagement />} />
 
           <Route path="documents" element={<DocumentManagement />} />
-
-          <Route path="learning" element={<LearningManagement />} />
-          <Route path="learning/create" element={<CreateArticle />} />
-          <Route path="learning/edit/:id" element={<EditArticle />} />
 
           <Route path="settings" element={<Settings />} />
           <Route path="audit-logs" element={<AuditLogs />} />

@@ -5,7 +5,6 @@ import {
   FiUsers,
   FiTrendingUp,
   FiFileText,
-  FiBookOpen,
   FiSettings,
   FiList,
   FiLogOut,
@@ -16,7 +15,6 @@ const navigation = [
   { name: 'Users', href: '/admin/users', icon: FiUsers },
   { name: 'Markets', href: '/admin/markets', icon: FiTrendingUp },
   { name: 'Documents', href: '/admin/documents', icon: FiFileText },
-  { name: 'Learning Center', href: '/admin/learning', icon: FiBookOpen },
   { name: 'Settings', href: '/admin/settings', icon: FiSettings },
   { name: 'Audit Logs', href: '/admin/audit-logs', icon: FiList },
 ];
