@@ -1,5 +1,6 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import Logo from '../shared/Logo';
 import {
   FiHome,
   FiUsers,
@@ -29,7 +30,7 @@ export default function AdminLayout() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-center h-16 px-4 border-b border-gray-800">
-            <h1 className="text-2xl font-bold text-white">Castwell Admin</h1>
+            <Logo variant="dark" size="sm" />
           </div>
 
           {/* Navigation */}
