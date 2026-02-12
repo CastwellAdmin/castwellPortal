@@ -1,5 +1,6 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import Logo from '../shared/Logo';
 import {
   FiHome,
   FiPieChart,
@@ -30,7 +31,7 @@ export default function UserLayout() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-center h-16 px-4 border-b">
-            <h1 className="text-2xl font-bold text-primary-600">Castwell</h1>
+            <Logo variant="light" size="sm" />
           </div>
 
           {/* Navigation */}
