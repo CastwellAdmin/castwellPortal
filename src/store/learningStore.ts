@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
+import { supabase, isDemoMode } from '../lib/supabase';
 import type { Article, ArticleCategory } from '../types';
 
 interface LearningState {
@@ -92,6 +92,11 @@ export const useLearningStore = create<LearningState>((set, get) => ({
   fetchArticles: async () => {
     set({ isLoading: true });
 
+    if (isDemoMode) {
+      set({ articles: MOCK_ARTICLES, isLoading: false });
+      return;
+    }
+
     try {
       const { data: articles, error } = await supabase
         .from('articles')
@@ -121,6 +126,11 @@ export const useLearningStore = create<LearningState>((set, get) => ({
   },
 
   fetchCategories: async () => {
+    if (isDemoMode) {
+      set({ categories: MOCK_CATEGORIES });
+      return;
+    }
+
     try {
       const { data: categories, error } = await supabase
         .from('article_categories')
@@ -148,6 +158,16 @@ export const useLearningStore = create<LearningState>((set, get) => ({
   },
 
   createArticle: async (article: Omit<Article, 'id' | 'publishDate'>) => {
+    if (isDemoMode) {
+      const newArticle: Article = {
+        ...article,
+        id: Date.now().toString(),
+        publishDate: new Date().toISOString().split('T')[0],
+      };
+      set((state) => ({ articles: [...state.articles, newArticle] }));
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('articles')
@@ -186,6 +206,15 @@ export const useLearningStore = create<LearningState>((set, get) => ({
   },
 
   updateArticle: async (id: string, articleData: Partial<Article>) => {
+    if (isDemoMode) {
+      set((state) => ({
+        articles: state.articles.map((article) =>
+          article.id === id ? { ...article, ...articleData } : article
+        ),
+      }));
+      return;
+    }
+
     try {
       const updateData: any = {};
       if (articleData.title) updateData.title = articleData.title;
@@ -214,6 +243,13 @@ export const useLearningStore = create<LearningState>((set, get) => ({
   },
 
   deleteArticle: async (id: string) => {
+    if (isDemoMode) {
+      set((state) => ({
+        articles: state.articles.filter((article) => article.id !== id),
+      }));
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('articles')

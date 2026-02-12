@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
+import { supabase, isDemoMode } from '../lib/supabase';
 import type { Document } from '../types';
 
 interface DocumentState {
@@ -12,12 +12,68 @@ interface DocumentState {
   deleteDocument: (id: string) => Promise<void>;
 }
 
+const DEMO_DOCUMENTS: Document[] = [
+  {
+    id: '1',
+    title: 'Investment Agreement 2025',
+    type: 'pdf',
+    uploadDate: '2025-01-10',
+    size: 245000,
+    status: 'pending',
+    requiresSignature: true,
+    assignedUsers: ['demo-user-1', 'demo-admin-1'],
+    url: '#',
+  },
+  {
+    id: '2',
+    title: 'Quarterly Portfolio Report - Q4 2024',
+    type: 'pdf',
+    uploadDate: '2025-01-05',
+    size: 1200000,
+    status: 'viewed',
+    requiresSignature: false,
+    assignedUsers: ['demo-user-1', 'demo-admin-1'],
+    url: '#',
+  },
+  {
+    id: '3',
+    title: 'Risk Disclosure Statement',
+    type: 'pdf',
+    uploadDate: '2024-12-20',
+    size: 89000,
+    status: 'signed',
+    requiresSignature: true,
+    signedDate: '2024-12-22',
+    assignedUsers: ['demo-user-1', 'demo-admin-1'],
+    url: '#',
+  },
+  {
+    id: '4',
+    title: 'Tax Summary 2024',
+    type: 'pdf',
+    uploadDate: '2025-01-15',
+    size: 340000,
+    status: 'pending',
+    requiresSignature: false,
+    assignedUsers: ['demo-user-1', 'demo-admin-1'],
+    url: '#',
+  },
+];
+
 export const useDocumentStore = create<DocumentState>((set) => ({
   documents: [],
   isLoading: false,
 
   fetchDocuments: async (userId?: string) => {
     set({ isLoading: true });
+
+    if (isDemoMode) {
+      const docs = userId
+        ? DEMO_DOCUMENTS.filter((d) => d.assignedUsers.includes(userId))
+        : DEMO_DOCUMENTS;
+      set({ documents: docs, isLoading: false });
+      return;
+    }
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -63,6 +119,16 @@ export const useDocumentStore = create<DocumentState>((set) => ({
   },
 
   uploadDocument: async (doc: Omit<Document, 'id' | 'uploadDate'>) => {
+    if (isDemoMode) {
+      const newDoc: Document = {
+        ...doc,
+        id: Date.now().toString(),
+        uploadDate: new Date().toISOString().split('T')[0],
+      };
+      set((state) => ({ documents: [...state.documents, newDoc] }));
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('documents')
@@ -101,9 +167,18 @@ export const useDocumentStore = create<DocumentState>((set) => ({
   },
 
   signDocument: async (id: string) => {
-    try {
-      const signedDate = new Date().toISOString().split('T')[0];
+    const signedDate = new Date().toISOString().split('T')[0];
 
+    if (isDemoMode) {
+      set((state) => ({
+        documents: state.documents.map((doc) =>
+          doc.id === id ? { ...doc, status: 'signed' as const, signedDate } : doc
+        ),
+      }));
+      return;
+    }
+
+    try {
       const { error } = await supabase
         .from('documents')
         .update({
@@ -131,6 +206,15 @@ export const useDocumentStore = create<DocumentState>((set) => ({
   },
 
   updateDocumentStatus: async (id: string, status: Document['status']) => {
+    if (isDemoMode) {
+      set((state) => ({
+        documents: state.documents.map((doc) =>
+          doc.id === id ? { ...doc, status } : doc
+        ),
+      }));
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('documents')
@@ -150,6 +234,13 @@ export const useDocumentStore = create<DocumentState>((set) => ({
   },
 
   deleteDocument: async (id: string) => {
+    if (isDemoMode) {
+      set((state) => ({
+        documents: state.documents.filter((doc) => doc.id !== id),
+      }));
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('documents')

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase } from '../lib/supabase';
+import { supabase, isDemoMode } from '../lib/supabase';
 import type { User } from '../types';
 
 interface AuthState {
@@ -13,6 +13,33 @@ interface AuthState {
   checkSession: () => Promise<void>;
 }
 
+const DEMO_USERS: Record<string, { password: string; user: User }> = {
+  'admin@castwell.com': {
+    password: 'admin123',
+    user: {
+      id: 'demo-admin-1',
+      email: 'admin@castwell.com',
+      name: 'Admin User',
+      role: 'admin',
+      createdAt: '2025-01-01',
+      lastLogin: new Date().toISOString(),
+      isActive: true,
+    },
+  },
+  'user@castwell.com': {
+    password: 'user123',
+    user: {
+      id: 'demo-user-1',
+      email: 'user@castwell.com',
+      name: 'Demo Client',
+      role: 'user',
+      createdAt: '2025-01-01',
+      lastLogin: new Date().toISOString(),
+      isActive: true,
+    },
+  },
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -21,6 +48,19 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
 
       login: async (email: string, password: string) => {
+        if (isDemoMode) {
+          const demoUser = DEMO_USERS[email];
+          if (demoUser && demoUser.password === password) {
+            set({
+              user: { ...demoUser.user, lastLogin: new Date().toISOString() },
+              isAuthenticated: true,
+              isLoading: false,
+            });
+            return true;
+          }
+          return false;
+        }
+
         try {
           const { data, error } = await supabase.auth.signInWithPassword({
             email,
@@ -69,13 +109,22 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
-        await supabase.auth.signOut();
+        if (!isDemoMode) {
+          await supabase.auth.signOut();
+        }
         set({ user: null, isAuthenticated: false });
       },
 
       updateUser: async (userData: Partial<User>) => {
         const currentUser = useAuthStore.getState().user;
         if (!currentUser) return;
+
+        if (isDemoMode) {
+          set((state) => ({
+            user: state.user ? { ...state.user, ...userData } : null,
+          }));
+          return;
+        }
 
         try {
           const { error } = await supabase
@@ -97,6 +146,11 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkSession: async () => {
+        if (isDemoMode) {
+          set((state) => ({ ...state, isLoading: false }));
+          return;
+        }
+
         try {
           const { data: { session } } = await supabase.auth.getSession();
 
