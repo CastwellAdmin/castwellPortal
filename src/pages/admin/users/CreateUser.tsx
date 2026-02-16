@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUserStore } from '../../../store/userStore';
 import { Card } from '../../../components/Card';
 import { Input } from '../../../components/forms/Input';
 import { Button } from '../../../components/forms/Button';
@@ -7,6 +8,8 @@ import { FiArrowLeft } from 'react-icons/fi';
 
 export default function CreateUser() {
   const navigate = useNavigate();
+  const { createUser, getUserByEmail } = useUserStore();
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -16,8 +19,14 @@ export default function CreateUser() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would call an API
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    setError('');
+
+    if (getUserByEmail(formData.email)) {
+      setError('A user with this email already exists.');
+      return;
+    }
+
+    createUser(formData);
     navigate('/admin/users');
   };
 
@@ -68,6 +77,12 @@ export default function CreateUser() {
               <option value="admin">Administrator</option>
             </select>
           </div>
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
 
           <div className="pt-4 flex space-x-3">
             <Button type="submit">Create User</Button>

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase, isDemoMode } from '../lib/supabase';
+import { useUserStore } from './userStore';
 import type { User } from '../types';
 
 interface AuthState {
@@ -13,33 +14,6 @@ interface AuthState {
   checkSession: () => Promise<void>;
 }
 
-const DEMO_USERS: Record<string, { password: string; user: User }> = {
-  'admin@castwell.com': {
-    password: 'admin123',
-    user: {
-      id: 'demo-admin-1',
-      email: 'admin@castwell.com',
-      name: 'Admin User',
-      role: 'admin',
-      createdAt: '2025-01-01',
-      lastLogin: new Date().toISOString(),
-      isActive: true,
-    },
-  },
-  'user@castwell.com': {
-    password: 'user123',
-    user: {
-      id: 'demo-user-1',
-      email: 'user@castwell.com',
-      name: 'Demo Client',
-      role: 'user',
-      createdAt: '2025-01-01',
-      lastLogin: new Date().toISOString(),
-      isActive: true,
-    },
-  },
-};
-
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -49,10 +23,18 @@ export const useAuthStore = create<AuthState>()(
 
       login: async (email: string, password: string) => {
         if (isDemoMode) {
-          const demoUser = DEMO_USERS[email];
-          if (demoUser && demoUser.password === password) {
+          const stored = useUserStore.getState().authenticate(email, password);
+          if (stored) {
             set({
-              user: { ...demoUser.user, lastLogin: new Date().toISOString() },
+              user: {
+                id: stored.id,
+                email: stored.email,
+                name: stored.name,
+                role: stored.role,
+                createdAt: stored.createdAt,
+                lastLogin: new Date().toISOString(),
+                isActive: stored.isActive,
+              },
               isAuthenticated: true,
               isLoading: false,
             });
@@ -70,7 +52,6 @@ export const useAuthStore = create<AuthState>()(
           if (error) throw error;
 
           if (data.user) {
-            // Fetch user profile
             const { data: profile } = await supabase
               .from('profiles')
               .select('*')
@@ -78,7 +59,6 @@ export const useAuthStore = create<AuthState>()(
               .single();
 
             if (profile) {
-              // Update last login
               await supabase
                 .from('profiles')
                 .update({ last_login: new Date().toISOString() })
@@ -120,6 +100,7 @@ export const useAuthStore = create<AuthState>()(
         if (!currentUser) return;
 
         if (isDemoMode) {
+          useUserStore.getState().updateUser(currentUser.id, userData);
           set((state) => ({
             user: state.user ? { ...state.user, ...userData } : null,
           }));

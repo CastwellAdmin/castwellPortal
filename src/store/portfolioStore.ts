@@ -30,26 +30,6 @@ const generatePerformanceHistory = (): PerformanceData[] => {
   return data;
 };
 
-const DEMO_ASSETS: PortfolioAsset[] = [
-  { id: '1', symbol: 'AAPL', name: 'Apple Inc.', quantity: 50, purchasePrice: 150.00, currentPrice: 178.50, sector: 'Technology', market: 'NASDAQ' },
-  { id: '2', symbol: 'MSFT', name: 'Microsoft Corporation', quantity: 30, purchasePrice: 280.00, currentPrice: 415.20, sector: 'Technology', market: 'NASDAQ' },
-  { id: '3', symbol: 'GOOGL', name: 'Alphabet Inc.', quantity: 20, purchasePrice: 120.00, currentPrice: 175.80, sector: 'Technology', market: 'NASDAQ' },
-  { id: '4', symbol: 'JPM', name: 'JPMorgan Chase & Co.', quantity: 40, purchasePrice: 140.00, currentPrice: 198.30, sector: 'Financial Services', market: 'NYSE' },
-  { id: '5', symbol: 'JNJ', name: 'Johnson & Johnson', quantity: 25, purchasePrice: 160.00, currentPrice: 155.40, sector: 'Healthcare', market: 'NYSE' },
-];
-
-const getDemoPortfolio = (): PortfolioSummary => {
-  const totalValue = DEMO_ASSETS.reduce((sum, a) => sum + a.quantity * a.currentPrice, 0);
-  const totalCost = DEMO_ASSETS.reduce((sum, a) => sum + a.quantity * a.purchasePrice, 0);
-  const totalGain = totalValue - totalCost;
-  return {
-    totalValue,
-    totalGain,
-    totalGainPercent: (totalGain / totalCost) * 100,
-    assets: DEMO_ASSETS,
-  };
-};
-
 export const usePortfolioStore = create<PortfolioState>((set) => ({
   portfolio: null,
   performanceHistory: [],
@@ -59,7 +39,7 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
     set({ isLoading: true });
 
     if (isDemoMode) {
-      set({ portfolio: getDemoPortfolio(), isLoading: false });
+      set({ portfolio: null, isLoading: false });
       return;
     }
 

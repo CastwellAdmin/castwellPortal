@@ -12,54 +12,6 @@ interface DocumentState {
   deleteDocument: (id: string) => Promise<void>;
 }
 
-const DEMO_DOCUMENTS: Document[] = [
-  {
-    id: '1',
-    title: 'Investment Agreement 2025',
-    type: 'pdf',
-    uploadDate: '2025-01-10',
-    size: 245000,
-    status: 'pending',
-    requiresSignature: true,
-    assignedUsers: ['demo-user-1', 'demo-admin-1'],
-    url: '#',
-  },
-  {
-    id: '2',
-    title: 'Quarterly Portfolio Report - Q4 2024',
-    type: 'pdf',
-    uploadDate: '2025-01-05',
-    size: 1200000,
-    status: 'viewed',
-    requiresSignature: false,
-    assignedUsers: ['demo-user-1', 'demo-admin-1'],
-    url: '#',
-  },
-  {
-    id: '3',
-    title: 'Risk Disclosure Statement',
-    type: 'pdf',
-    uploadDate: '2024-12-20',
-    size: 89000,
-    status: 'signed',
-    requiresSignature: true,
-    signedDate: '2024-12-22',
-    assignedUsers: ['demo-user-1', 'demo-admin-1'],
-    url: '#',
-  },
-  {
-    id: '4',
-    title: 'Tax Summary 2024',
-    type: 'pdf',
-    uploadDate: '2025-01-15',
-    size: 340000,
-    status: 'pending',
-    requiresSignature: false,
-    assignedUsers: ['demo-user-1', 'demo-admin-1'],
-    url: '#',
-  },
-];
-
 export const useDocumentStore = create<DocumentState>((set) => ({
   documents: [],
   isLoading: false,
@@ -68,10 +20,7 @@ export const useDocumentStore = create<DocumentState>((set) => ({
     set({ isLoading: true });
 
     if (isDemoMode) {
-      const docs = userId
-        ? DEMO_DOCUMENTS.filter((d) => d.assignedUsers.includes(userId))
-        : DEMO_DOCUMENTS;
-      set({ documents: docs, isLoading: false });
+      set({ documents: [], isLoading: false });
       return;
     }
 

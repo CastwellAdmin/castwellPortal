@@ -1,57 +1,18 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUserStore } from '../../../store/userStore';
 import { Card } from '../../../components/Card';
 import { Table } from '../../../components/tables/Table';
 import { Button } from '../../../components/forms/Button';
 import type { User } from '../../../types';
 import { FiPlus, FiEdit, FiTrash2 } from 'react-icons/fi';
 
-const MOCK_USERS: User[] = [
-  {
-    id: '1',
-    email: 'admin@castwell.com',
-    name: 'Admin User',
-    role: 'admin',
-    createdAt: '2024-01-15',
-    lastLogin: '2025-01-08',
-    isActive: true,
-  },
-  {
-    id: '2',
-    email: 'user@castwell.com',
-    name: 'Client User',
-    role: 'user',
-    createdAt: '2024-02-20',
-    lastLogin: '2025-01-07',
-    isActive: true,
-  },
-  {
-    id: '3',
-    email: 'john.doe@example.com',
-    name: 'John Doe',
-    role: 'user',
-    createdAt: '2024-03-10',
-    lastLogin: '2025-01-05',
-    isActive: true,
-  },
-  {
-    id: '4',
-    email: 'jane.smith@example.com',
-    name: 'Jane Smith',
-    role: 'user',
-    createdAt: '2024-04-22',
-    lastLogin: '2024-12-28',
-    isActive: false,
-  },
-];
-
 export default function UserManagement() {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<User[]>(MOCK_USERS);
+  const { users, deleteUser } = useUserStore();
 
   const handleDelete = (userId: string) => {
     if (confirm('Are you sure you want to delete this user?')) {
-      setUsers(users.filter((u) => u.id !== userId));
+      deleteUser(userId);
     }
   };
 
