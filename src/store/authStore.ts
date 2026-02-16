@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase, isDemoMode } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { useUserStore } from './userStore';
 import type { User } from '../types';
 
@@ -22,36 +22,14 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
 
       login: async (email: string, password: string) => {
-        if (isDemoMode) {
-          const stored = useUserStore.getState().authenticate(email, password);
-          if (stored) {
-            set({
-              user: {
-                id: stored.id,
-                email: stored.email,
-                name: stored.name,
-                role: stored.role,
-                createdAt: stored.createdAt,
-                lastLogin: new Date().toISOString(),
-                isActive: stored.isActive,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-            });
-            return true;
-          }
-          return false;
-        }
-
+        // Try Supabase auth first
         try {
           const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password,
           });
 
-          if (error) throw error;
-
-          if (data.user) {
+          if (!error && data.user) {
             const { data: profile } = await supabase
               .from('profiles')
               .select('*')
@@ -79,18 +57,66 @@ export const useAuthStore = create<AuthState>()(
               });
               return true;
             }
-          }
 
-          return false;
+            // User exists in Supabase Auth but no profile - create one
+            const newProfile = {
+              id: data.user.id,
+              email: data.user.email,
+              name: data.user.email?.split('@')[0] || 'User',
+              role: 'user',
+              is_active: true,
+              created_at: new Date().toISOString(),
+              last_login: new Date().toISOString(),
+            };
+
+            await supabase.from('profiles').insert(newProfile);
+
+            set({
+              user: {
+                id: newProfile.id,
+                email: newProfile.email || email,
+                name: newProfile.name,
+                role: 'user',
+                createdAt: newProfile.created_at,
+                lastLogin: newProfile.last_login,
+                isActive: true,
+              },
+              isAuthenticated: true,
+              isLoading: false,
+            });
+            return true;
+          }
         } catch (error) {
-          console.error('Login error:', error);
-          return false;
+          console.warn('Supabase auth failed, trying local auth:', error);
         }
+
+        // Fallback to local authentication (for admin and locally-created users)
+        const stored = useUserStore.getState().authenticate(email, password);
+        if (stored) {
+          set({
+            user: {
+              id: stored.id,
+              email: stored.email,
+              name: stored.name,
+              role: stored.role,
+              createdAt: stored.createdAt,
+              lastLogin: new Date().toISOString(),
+              isActive: stored.isActive,
+            },
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          return true;
+        }
+
+        return false;
       },
 
       logout: async () => {
-        if (!isDemoMode) {
+        try {
           await supabase.auth.signOut();
+        } catch {
+          // Ignore signout errors
         }
         set({ user: null, isAuthenticated: false });
       },
@@ -98,14 +124,6 @@ export const useAuthStore = create<AuthState>()(
       updateUser: async (userData: Partial<User>) => {
         const currentUser = useAuthStore.getState().user;
         if (!currentUser) return;
-
-        if (isDemoMode) {
-          useUserStore.getState().updateUser(currentUser.id, userData);
-          set((state) => ({
-            user: state.user ? { ...state.user, ...userData } : null,
-          }));
-          return;
-        }
 
         try {
           const { error } = await supabase
@@ -120,18 +138,20 @@ export const useAuthStore = create<AuthState>()(
             set((state) => ({
               user: state.user ? { ...state.user, ...userData } : null,
             }));
+            return;
           }
-        } catch (error) {
-          console.error('Update user error:', error);
+        } catch {
+          // Supabase update failed, fall back to local
         }
+
+        // Fallback to local update
+        useUserStore.getState().updateUser(currentUser.id, userData);
+        set((state) => ({
+          user: state.user ? { ...state.user, ...userData } : null,
+        }));
       },
 
       checkSession: async () => {
-        if (isDemoMode) {
-          set((state) => ({ ...state, isLoading: false }));
-          return;
-        }
-
         try {
           const { data: { session } } = await supabase.auth.getSession();
 
@@ -160,10 +180,12 @@ export const useAuthStore = create<AuthState>()(
             }
           }
 
-          set({ user: null, isAuthenticated: false, isLoading: false });
+          // No active Supabase session - check persisted auth state
+          set((state) => ({ ...state, isLoading: false }));
         } catch (error) {
           console.error('Session check error:', error);
-          set({ user: null, isAuthenticated: false, isLoading: false });
+          // On error, preserve any existing persisted auth state
+          set((state) => ({ ...state, isLoading: false }));
         }
       },
     }),
