@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase } from '../lib/supabase';
+import { supabase, isDemoMode } from '../lib/supabase';
+import { useUserStore } from './userStore';
 import type { User } from '../types';
 
 interface AuthState {
@@ -21,6 +22,27 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
 
       login: async (email: string, password: string) => {
+        if (isDemoMode) {
+          const stored = useUserStore.getState().authenticate(email, password);
+          if (stored) {
+            set({
+              user: {
+                id: stored.id,
+                email: stored.email,
+                name: stored.name,
+                role: stored.role,
+                createdAt: stored.createdAt,
+                lastLogin: new Date().toISOString(),
+                isActive: stored.isActive,
+              },
+              isAuthenticated: true,
+              isLoading: false,
+            });
+            return true;
+          }
+          return false;
+        }
+
         try {
           const { data, error } = await supabase.auth.signInWithPassword({
             email,
@@ -30,7 +52,6 @@ export const useAuthStore = create<AuthState>()(
           if (error) throw error;
 
           if (data.user) {
-            // Fetch user profile
             const { data: profile } = await supabase
               .from('profiles')
               .select('*')
@@ -38,7 +59,6 @@ export const useAuthStore = create<AuthState>()(
               .single();
 
             if (profile) {
-              // Update last login
               await supabase
                 .from('profiles')
                 .update({ last_login: new Date().toISOString() })
@@ -69,13 +89,23 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
-        await supabase.auth.signOut();
+        if (!isDemoMode) {
+          await supabase.auth.signOut();
+        }
         set({ user: null, isAuthenticated: false });
       },
 
       updateUser: async (userData: Partial<User>) => {
         const currentUser = useAuthStore.getState().user;
         if (!currentUser) return;
+
+        if (isDemoMode) {
+          useUserStore.getState().updateUser(currentUser.id, userData);
+          set((state) => ({
+            user: state.user ? { ...state.user, ...userData } : null,
+          }));
+          return;
+        }
 
         try {
           const { error } = await supabase
@@ -97,6 +127,11 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkSession: async () => {
+        if (isDemoMode) {
+          set((state) => ({ ...state, isLoading: false }));
+          return;
+        }
+
         try {
           const { data: { session } } = await supabase.auth.getSession();
 

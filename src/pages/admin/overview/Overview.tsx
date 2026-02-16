@@ -1,24 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useMarketStore } from '../../../store/marketStore';
 import { useDocumentStore } from '../../../store/documentStore';
+import { useUserStore } from '../../../store/userStore';
 import { Card } from '../../../components/Card';
 import { BarChart } from '../../../components/charts/BarChart';
 import { FiUsers, FiFileText, FiTrendingUp, FiActivity } from 'react-icons/fi';
-import type { PlatformMetrics } from '../../../types';
 
 export default function AdminOverview() {
   const { tickers, fetchTickers } = useMarketStore();
   const { documents, fetchDocuments } = useDocumentStore();
+  const { users } = useUserStore();
 
-  const [metrics] = useState<PlatformMetrics>({
-    totalUsers: 156,
-    activeUsers: 142,
-    totalDocuments: 234,
-    pendingDocuments: 12,
-    totalTransactions: 1543,
-    totalVolume: 2450000,
-  });
+  const totalUsers = users.length;
+  const activeUsers = users.filter((u) => u.isActive).length;
+  const pendingDocuments = documents.filter((d) => d.status === 'pending').length;
 
   useEffect(() => {
     fetchTickers();
@@ -45,9 +41,9 @@ export default function AdminOverview() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Users</p>
-              <p className="text-3xl font-bold text-gray-900">{metrics.totalUsers}</p>
+              <p className="text-3xl font-bold text-gray-900">{totalUsers}</p>
               <p className="text-sm text-green-600 mt-1">
-                {metrics.activeUsers} active
+                {activeUsers} active
               </p>
             </div>
             <FiUsers className="text-primary-600" size={40} />
@@ -58,9 +54,9 @@ export default function AdminOverview() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Documents</p>
-              <p className="text-3xl font-bold text-gray-900">{metrics.totalDocuments}</p>
+              <p className="text-3xl font-bold text-gray-900">{documents.length}</p>
               <p className="text-sm text-orange-600 mt-1">
-                {metrics.pendingDocuments} pending
+                {pendingDocuments} pending
               </p>
             </div>
             <FiFileText className="text-primary-600" size={40} />
@@ -87,9 +83,9 @@ export default function AdminOverview() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Transactions</p>
-              <p className="text-3xl font-bold text-gray-900">{metrics.totalTransactions}</p>
+              <p className="text-3xl font-bold text-gray-900">0</p>
               <p className="text-sm text-gray-600 mt-1">
-                ${(metrics.totalVolume / 1000000).toFixed(1)}M volume
+                $0 volume
               </p>
             </div>
             <FiActivity className="text-primary-600" size={40} />

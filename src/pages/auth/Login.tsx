@@ -48,7 +48,7 @@ export default function Login() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="admin@castwell.com"
+            placeholder="you@example.com"
             required
           />
 
@@ -80,16 +80,6 @@ export default function Login() {
             Sign In
           </Button>
         </form>
-
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <p className="text-xs text-gray-600 mb-2">Demo Credentials:</p>
-          <p className="text-xs text-gray-700">
-            <strong>Admin:</strong> admin@castwell.com / admin123
-          </p>
-          <p className="text-xs text-gray-700">
-            <strong>User:</strong> user@castwell.com / user123
-          </p>
-        </div>
       </div>
     </div>
   );

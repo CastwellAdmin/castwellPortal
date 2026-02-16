@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
+import { supabase, isDemoMode } from '../lib/supabase';
 import type { PortfolioAsset, PortfolioSummary, PerformanceData } from '../types';
 
 interface PortfolioState {
@@ -37,6 +37,11 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
 
   fetchPortfolio: async () => {
     set({ isLoading: true });
+
+    if (isDemoMode) {
+      set({ portfolio: null, isLoading: false });
+      return;
+    }
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -91,6 +96,11 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
   },
 
   fetchPerformanceHistory: async () => {
+    if (isDemoMode) {
+      set({ performanceHistory: generatePerformanceHistory() });
+      return;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
 

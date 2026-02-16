@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useUserStore } from '../../../store/userStore';
 import { Card } from '../../../components/Card';
 import { Input } from '../../../components/forms/Input';
 import { Button } from '../../../components/forms/Button';
@@ -8,24 +9,55 @@ import { FiArrowLeft } from 'react-icons/fi';
 export default function UserDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { getUser, updateUser } = useUserStore();
   const [isEditing, setIsEditing] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
   const [formData, setFormData] = useState({
-    name: 'Client User',
-    email: 'user@castwell.com',
+    name: '',
+    email: '',
     role: 'user' as 'user' | 'admin',
     isActive: true,
   });
 
+  const user = id ? getUser(id) : undefined;
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+      });
+    }
+  }, [user]);
+
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <Button variant="outline" onClick={() => navigate('/admin/users')}>
+          <FiArrowLeft className="mr-2" />
+          Back to Users
+        </Button>
+        <p className="text-gray-600">User not found.</p>
+      </div>
+    );
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    if (id) {
+      updateUser(id, formData);
+    }
     setIsEditing(false);
   };
 
-  const handleResetPassword = async () => {
-    if (confirm('Send password reset email to this user?')) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      alert('Password reset email sent!');
+  const handleResetPassword = () => {
+    if (!newPassword) return;
+    if (id) {
+      updateUser(id, { password: newPassword });
+      setNewPassword('');
+      alert('Password updated.');
     }
   };
 
@@ -128,15 +160,22 @@ export default function UserDetail() {
 
       <Card title="Security">
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-gray-900">Reset Password</p>
-              <p className="text-sm text-gray-600">
-                Send a password reset email to the user
-              </p>
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <p className="font-medium text-gray-900 mb-1">Set New Password</p>
+              <Input
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                type="password"
+                placeholder="Enter new password"
+              />
             </div>
-            <Button variant="outline" onClick={handleResetPassword}>
-              Send Reset Email
+            <Button
+              variant="outline"
+              onClick={handleResetPassword}
+              className="mt-6"
+            >
+              Update Password
             </Button>
           </div>
         </div>
