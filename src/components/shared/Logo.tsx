@@ -2,7 +2,7 @@ import type { FC } from 'react';
 
 interface LogoProps {
   variant?: 'light' | 'dark';
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   className?: string;
 }
 
@@ -12,6 +12,7 @@ const Logo: FC<LogoProps> = ({ variant = 'light', size = 'md', className = '' })
     md: 'h-12',
     lg: 'h-16',
     xl: 'h-24',
+    '2xl': 'h-32',
   };
 
   const logoSrc = variant === 'dark'
