@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
-import { useUserStore } from './userStore';
 import type { User } from '../types';
 
 interface AuthState {
@@ -87,26 +86,7 @@ export const useAuthStore = create<AuthState>()(
             return true;
           }
         } catch (error) {
-          console.warn('Supabase auth failed, trying local auth:', error);
-        }
-
-        // Fallback to local authentication (for admin and locally-created users)
-        const stored = useUserStore.getState().authenticate(email, password);
-        if (stored) {
-          set({
-            user: {
-              id: stored.id,
-              email: stored.email,
-              name: stored.name,
-              role: stored.role,
-              createdAt: stored.createdAt,
-              lastLogin: new Date().toISOString(),
-              isActive: stored.isActive,
-            },
-            isAuthenticated: true,
-            isLoading: false,
-          });
-          return true;
+          console.error('Supabase auth failed:', error);
         }
 
         return false;
@@ -140,15 +120,9 @@ export const useAuthStore = create<AuthState>()(
             }));
             return;
           }
-        } catch {
-          // Supabase update failed, fall back to local
+        } catch (error) {
+          console.error('Profile update failed:', error);
         }
-
-        // Fallback to local update
-        useUserStore.getState().updateUser(currentUser.id, userData);
-        set((state) => ({
-          user: state.user ? { ...state.user, ...userData } : null,
-        }));
       },
 
       checkSession: async () => {

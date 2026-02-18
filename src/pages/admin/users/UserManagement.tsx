@@ -32,7 +32,9 @@ export default function UserManagement() {
       accessor: (row: User) => (
         <span
           className={`px-2 py-1 text-xs font-medium rounded-full ${
-            row.role === 'admin'
+            row.role === 'super_admin'
+              ? 'bg-red-100 text-red-800'
+              : row.role === 'admin'
               ? 'bg-purple-100 text-purple-800'
               : 'bg-blue-100 text-blue-800'
           }`}
@@ -92,7 +94,7 @@ export default function UserManagement() {
   ];
 
   const activeUsers = users.filter((u) => u.isActive).length;
-  const adminUsers = users.filter((u) => u.role === 'admin').length;
+  const adminUsers = users.filter((u) => u.role === 'admin' || u.role === 'super_admin').length;
 
   return (
     <div className="space-y-6">

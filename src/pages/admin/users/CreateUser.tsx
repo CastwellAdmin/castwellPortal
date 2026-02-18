@@ -14,7 +14,7 @@ export default function CreateUser() {
     name: '',
     email: '',
     password: '',
-    role: 'user' as 'user' | 'admin',
+    role: 'user' as 'super_admin' | 'admin' | 'user',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -69,12 +69,13 @@ export default function CreateUser() {
             <select
               value={formData.role}
               onChange={(e) =>
-                setFormData({ ...formData, role: e.target.value as 'user' | 'admin' })
+                setFormData({ ...formData, role: e.target.value as 'super_admin' | 'admin' | 'user' })
               }
               className="input"
             >
               <option value="user">User</option>
-              <option value="admin">Administrator</option>
+              <option value="admin">Admin</option>
+              <option value="super_admin">Super Admin</option>
             </select>
           </div>
 

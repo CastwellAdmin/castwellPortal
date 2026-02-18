@@ -15,7 +15,7 @@ export default function UserDetail() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    role: 'user' as 'user' | 'admin',
+    role: 'user' as 'super_admin' | 'admin' | 'user',
     isActive: true,
   });
 
@@ -122,13 +122,14 @@ export default function UserDetail() {
             <select
               value={formData.role}
               onChange={(e) =>
-                setFormData({ ...formData, role: e.target.value as 'user' | 'admin' })
+                setFormData({ ...formData, role: e.target.value as 'super_admin' | 'admin' | 'user' })
               }
               className="input"
               disabled={!isEditing}
             >
               <option value="user">User</option>
-              <option value="admin">Administrator</option>
+              <option value="admin">Admin</option>
+              <option value="super_admin">Super Admin</option>
             </select>
           </div>
 
