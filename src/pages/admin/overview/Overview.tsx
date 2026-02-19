@@ -10,7 +10,7 @@ import { FiUsers, FiFileText, FiTrendingUp, FiActivity } from 'react-icons/fi';
 export default function AdminOverview() {
   const { tickers, fetchTickers } = useMarketStore();
   const { documents, fetchDocuments } = useDocumentStore();
-  const { users } = useUserStore();
+  const { users, fetchUsers } = useUserStore();
 
   const totalUsers = users.length;
   const activeUsers = users.filter((u) => u.isActive).length;
@@ -19,6 +19,7 @@ export default function AdminOverview() {
   useEffect(() => {
     fetchTickers();
     fetchDocuments();
+    fetchUsers();
   }, []);
 
   const userActivityData = [

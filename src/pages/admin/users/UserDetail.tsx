@@ -9,15 +9,23 @@ import { FiArrowLeft } from 'react-icons/fi';
 export default function UserDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getUser, updateUser } = useUserStore();
+  const { users, fetchUsers, getUser, updateUser, resetPassword } = useUserStore();
   const [isEditing, setIsEditing] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     role: 'user' as 'super_admin' | 'admin' | 'user',
     isActive: true,
   });
+
+  useEffect(() => {
+    if (users.length === 0) {
+      fetchUsers();
+    }
+  }, [users.length, fetchUsers]);
 
   const user = id ? getUser(id) : undefined;
 
@@ -39,25 +47,34 @@ export default function UserDetail() {
           <FiArrowLeft className="mr-2" />
           Back to Users
         </Button>
-        <p className="text-gray-600">User not found.</p>
+        <p className="text-gray-600">{users.length === 0 ? 'Loading...' : 'User not found.'}</p>
       </div>
     );
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (id) {
-      updateUser(id, formData);
+    if (!id) return;
+    setError('');
+    setIsSaving(true);
+
+    try {
+      await updateUser(id, formData);
+      setIsEditing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update user.');
+    } finally {
+      setIsSaving(false);
     }
-    setIsEditing(false);
   };
 
-  const handleResetPassword = () => {
-    if (!newPassword) return;
-    if (id) {
-      updateUser(id, { password: newPassword });
-      setNewPassword('');
-      alert('Password updated.');
+  const handleResetPassword = async () => {
+    setPasswordMsg('');
+    try {
+      await resetPassword(user.email);
+      setPasswordMsg('Password reset email sent to ' + user.email);
+    } catch (err) {
+      setPasswordMsg(err instanceof Error ? err.message : 'Failed to send reset email.');
     }
   };
 
@@ -96,7 +113,7 @@ export default function UserDetail() {
 
         <Card>
           <p className="text-sm text-gray-600 mb-1">User ID</p>
-          <p className="text-lg font-semibold text-gray-900">{id}</p>
+          <p className="text-lg font-semibold text-gray-900 truncate">{id}</p>
         </Card>
       </div>
 
@@ -148,9 +165,15 @@ export default function UserDetail() {
             </label>
           </div>
 
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
           {isEditing && (
             <div className="flex space-x-3">
-              <Button type="submit">Save Changes</Button>
+              <Button type="submit" isLoading={isSaving}>Save Changes</Button>
               <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
                 Cancel
               </Button>
@@ -161,24 +184,15 @@ export default function UserDetail() {
 
       <Card title="Security">
         <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <p className="font-medium text-gray-900 mb-1">Set New Password</p>
-              <Input
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                type="password"
-                placeholder="Enter new password"
-              />
-            </div>
-            <Button
-              variant="outline"
-              onClick={handleResetPassword}
-              className="mt-6"
-            >
-              Update Password
-            </Button>
-          </div>
+          <p className="text-sm text-gray-600">
+            Send a password reset email so the user can set a new password.
+          </p>
+          <Button variant="outline" onClick={handleResetPassword}>
+            Send Password Reset Email
+          </Button>
+          {passwordMsg && (
+            <p className="text-sm text-gray-700 mt-2">{passwordMsg}</p>
+          )}
         </div>
       </Card>
     </div>

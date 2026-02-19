@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserStore } from '../../../store/userStore';
 import { Card } from '../../../components/Card';
@@ -8,11 +9,19 @@ import { FiPlus, FiEdit, FiTrash2 } from 'react-icons/fi';
 
 export default function UserManagement() {
   const navigate = useNavigate();
-  const { users, deleteUser } = useUserStore();
+  const { users, isLoading, fetchUsers, deleteUser } = useUserStore();
 
-  const handleDelete = (userId: string) => {
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleDelete = async (userId: string) => {
     if (confirm('Are you sure you want to delete this user?')) {
-      deleteUser(userId);
+      try {
+        await deleteUser(userId);
+      } catch {
+        alert('Failed to delete user.');
+      }
     }
   };
 
@@ -124,11 +133,15 @@ export default function UserManagement() {
       </div>
 
       <Card title="All Users">
-        <Table
-          data={users}
-          columns={columns}
-          onRowClick={(user) => navigate(`/admin/users/${user.id}`)}
-        />
+        {isLoading ? (
+          <p className="text-gray-500 py-4">Loading users...</p>
+        ) : (
+          <Table
+            data={users}
+            columns={columns}
+            onRowClick={(user) => navigate(`/admin/users/${user.id}`)}
+          />
+        )}
       </Card>
     </div>
   );
