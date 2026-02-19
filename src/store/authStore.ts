@@ -21,75 +21,74 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
 
       login: async (email: string, password: string) => {
-        // Try Supabase auth first
-        try {
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-          if (!error && data.user) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', data.user.id)
-              .single();
-
-            if (profile) {
-              await supabase
-                .from('profiles')
-                .update({ last_login: new Date().toISOString() })
-                .eq('id', profile.id);
-
-              set({
-                user: {
-                  id: profile.id,
-                  email: profile.email,
-                  name: profile.name,
-                  role: profile.role,
-                  createdAt: profile.created_at,
-                  lastLogin: new Date().toISOString(),
-                  isActive: profile.is_active,
-                },
-                isAuthenticated: true,
-                isLoading: false,
-              });
-              return true;
-            }
-
-            // User exists in Supabase Auth but no profile - create one
-            const newProfile = {
-              id: data.user.id,
-              email: data.user.email,
-              name: data.user.email?.split('@')[0] || 'User',
-              role: 'user',
-              is_active: true,
-              created_at: new Date().toISOString(),
-              last_login: new Date().toISOString(),
-            };
-
-            await supabase.from('profiles').insert(newProfile);
-
-            set({
-              user: {
-                id: newProfile.id,
-                email: newProfile.email || email,
-                name: newProfile.name,
-                role: 'user',
-                createdAt: newProfile.created_at,
-                lastLogin: newProfile.last_login,
-                isActive: true,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-            });
-            return true;
-          }
-        } catch (error) {
-          console.error('Supabase auth failed:', error);
+        if (error) {
+          throw new Error(error.message);
         }
 
-        return false;
+        if (!data.user) {
+          throw new Error('Login failed. Please try again.');
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profile) {
+          await supabase
+            .from('profiles')
+            .update({ last_login: new Date().toISOString() })
+            .eq('id', profile.id);
+
+          set({
+            user: {
+              id: profile.id,
+              email: profile.email,
+              name: profile.name,
+              role: profile.role,
+              createdAt: profile.created_at,
+              lastLogin: new Date().toISOString(),
+              isActive: profile.is_active,
+            },
+            isAuthenticated: true,
+            isLoading: false,
+          });
+          return true;
+        }
+
+        // User exists in Supabase Auth but no profile - create one
+        const newProfile = {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.email?.split('@')[0] || 'User',
+          role: 'user',
+          is_active: true,
+          created_at: new Date().toISOString(),
+          last_login: new Date().toISOString(),
+        };
+
+        await supabase.from('profiles').insert(newProfile);
+
+        set({
+          user: {
+            id: newProfile.id,
+            email: newProfile.email || email,
+            name: newProfile.name,
+            role: 'user',
+            createdAt: newProfile.created_at,
+            lastLogin: newProfile.last_login,
+            isActive: true,
+          },
+          isAuthenticated: true,
+          isLoading: false,
+        });
+        return true;
       },
 
       logout: async () => {
