@@ -21,23 +21,42 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
 
       login: async (email: string, password: string) => {
+        // Try signing in first
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
+        let authUser = data?.user;
+
+        // If sign-in fails, try creating the auth account
+        // (handles users that exist in profiles but not in auth.users)
         if (error) {
-          throw new Error(error.message);
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+          });
+
+          if (signUpError) {
+            // signUp also failed — credentials are truly invalid
+            throw new Error(error.message);
+          }
+
+          if (!signUpData.session) {
+            throw new Error('Account created. Please check your email to confirm, then sign in again.');
+          }
+
+          authUser = signUpData.user;
         }
 
-        if (!data.user) {
+        if (!authUser) {
           throw new Error('Login failed. Please try again.');
         }
 
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', data.user.id)
+          .eq('id', authUser.id)
           .single();
 
         if (profile) {
@@ -64,9 +83,9 @@ export const useAuthStore = create<AuthState>()(
 
         // User exists in Supabase Auth but no profile - create one
         const newProfile = {
-          id: data.user.id,
-          email: data.user.email,
-          name: data.user.email?.split('@')[0] || 'User',
+          id: authUser.id,
+          email: authUser.email,
+          name: authUser.email?.split('@')[0] || 'User',
           role: 'user',
           is_active: true,
           created_at: new Date().toISOString(),
