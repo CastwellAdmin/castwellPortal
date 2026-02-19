@@ -61,6 +61,8 @@ export default function Profile() {
             disabled={!isEditing}
           />
 
+          <Input label="User ID" value={user?.username || ''} disabled />
+
           <Input
             label="Email Address"
             type="email"

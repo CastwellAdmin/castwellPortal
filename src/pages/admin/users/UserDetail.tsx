@@ -131,7 +131,7 @@ export default function UserDetail() {
 
         <Card>
           <p className="text-sm text-gray-600 mb-1">User ID</p>
-          <p className="text-lg font-semibold text-gray-900 truncate">{id}</p>
+          <p className="text-lg font-semibold text-gray-900 truncate">{user?.username}</p>
         </Card>
       </div>
 

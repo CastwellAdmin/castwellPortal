@@ -29,12 +29,14 @@ DROP TABLE IF EXISTS public.profiles CASCADE;
 
 DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
 DROP FUNCTION IF EXISTS public.handle_updated_at() CASCADE;
+DROP FUNCTION IF EXISTS public.get_email_by_username(TEXT) CASCADE;
 
 -- ============================================
 -- 1. PROFILES TABLE
 -- ============================================
 CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  username TEXT UNIQUE NOT NULL,
   email TEXT NOT NULL,
   name TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
@@ -249,9 +251,10 @@ CREATE POLICY "Admins can insert audit logs" ON audit_logs
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, email, name, role, is_active, created_at)
+  INSERT INTO public.profiles (id, username, email, name, role, is_active, created_at)
   VALUES (
     NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1)),
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
     COALESCE(NEW.raw_user_meta_data->>'role', 'user'),
@@ -268,7 +271,15 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================
--- 10. SEED DATA
+-- 10. USERNAME LOOKUP FUNCTION (bypasses RLS for login)
+-- ============================================
+CREATE OR REPLACE FUNCTION public.get_email_by_username(lookup_username TEXT)
+RETURNS TEXT AS $$
+  SELECT email FROM public.profiles WHERE username = lookup_username LIMIT 1;
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- ============================================
+-- 11. SEED DATA
 -- ============================================
 
 -- Sample articles

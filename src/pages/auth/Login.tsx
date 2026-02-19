@@ -8,7 +8,7 @@ import Logo from '../../components/shared/Logo';
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -19,11 +19,11 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const success = await login(email, password);
+      const success = await login(username, password);
       if (success) {
         navigate('/dashboard');
       } else {
-        setError('Invalid email or password');
+        setError('Invalid username or password');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
@@ -65,12 +65,12 @@ export default function Login() {
 
           <form onSubmit={handleSubmit}>
             <Input
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              autoComplete="email"
+              label="User ID"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Enter your user ID"
+              autoComplete="username"
               required
             />
 

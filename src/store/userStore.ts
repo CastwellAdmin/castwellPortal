@@ -8,7 +8,7 @@ interface UserStoreState {
   fetchUsers: () => Promise<void>;
   getUser: (id: string) => User | undefined;
   getUserByEmail: (email: string) => User | undefined;
-  createUser: (data: { name: string; email: string; password: string; role: UserRole }) => Promise<User>;
+  createUser: (data: { name: string; username: string; email: string; password: string; role: UserRole }) => Promise<User>;
   updateUser: (id: string, data: Partial<{ name: string; email: string; role: UserRole; isActive: boolean }>) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -34,6 +34,7 @@ export const useUserStore = create<UserStoreState>()(
 
       const users: User[] = (data || []).map((p) => ({
         id: p.id,
+        username: p.username,
         email: p.email,
         name: p.name,
         role: p.role,
@@ -58,6 +59,7 @@ export const useUserStore = create<UserStoreState>()(
         options: {
           data: {
             name: data.name,
+            username: data.username,
             role: data.role,
           },
         },
@@ -74,14 +76,15 @@ export const useUserStore = create<UserStoreState>()(
       // Wait briefly for the database trigger to create the profile
       await new Promise((r) => setTimeout(r, 500));
 
-      // Ensure the profile has the correct role and name
+      // Ensure the profile has the correct role, name, and username
       await supabase
         .from('profiles')
-        .update({ role: data.role, name: data.name })
+        .update({ role: data.role, name: data.name, username: data.username })
         .eq('id', signUpData.user.id);
 
       const newUser: User = {
         id: signUpData.user.id,
+        username: data.username,
         email: data.email,
         name: data.name,
         role: data.role,
