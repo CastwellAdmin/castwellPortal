@@ -153,12 +153,11 @@ export const useAuthStore = create<AuthState>()(
             }
           }
 
-          // No active Supabase session - check persisted auth state
-          set((state) => ({ ...state, isLoading: false }));
+          // No active Supabase session - clear any stale persisted state
+          set({ user: null, isAuthenticated: false, isLoading: false });
         } catch (error) {
           console.error('Session check error:', error);
-          // On error, preserve any existing persisted auth state
-          set((state) => ({ ...state, isLoading: false }));
+          set({ user: null, isAuthenticated: false, isLoading: false });
         }
       },
     }),
