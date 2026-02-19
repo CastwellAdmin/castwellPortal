@@ -16,6 +16,7 @@ export const supabaseNoSession: SupabaseClient = createClient(supabaseUrl, supab
   auth: {
     persistSession: false,
     autoRefreshToken: false,
+    storageKey: 'sb-no-session',
   },
 });
 
