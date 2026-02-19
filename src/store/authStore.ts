@@ -27,6 +27,13 @@ export const useAuthStore = create<AuthState>()(
         });
 
         if (error) {
+          // GoTrue returns 500 when email confirmations are required but
+          // the user's email hasn't been confirmed. Surface a helpful message.
+          if (error.status === 500) {
+            throw new Error(
+              'Authentication service error. Please check that email confirmations are disabled in your Supabase dashboard (Authentication → Providers → Email).'
+            );
+          }
           throw new Error(error.message);
         }
 
