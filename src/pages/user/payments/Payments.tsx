@@ -1,51 +1,49 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card } from '../../../components/Card';
 import { Table } from '../../../components/tables/Table';
+import { supabase } from '../../../lib/supabase';
 import type { Payment } from '../../../types';
 import { FiDownload, FiArrowUp, FiArrowDown, FiDollarSign } from 'react-icons/fi';
 
-// Mock payment data
-const MOCK_PAYMENTS: Payment[] = [
-  {
-    id: '1',
-    date: '2025-01-05',
-    amount: 5000,
-    type: 'deposit',
-    status: 'completed',
-    description: 'Initial Investment',
-    reference: 'DEP-2025-001',
-  },
-  {
-    id: '2',
-    date: '2025-01-01',
-    amount: 125.50,
-    type: 'dividend',
-    status: 'completed',
-    description: 'AAPL Dividend Payment',
-    reference: 'DIV-2025-001',
-  },
-  {
-    id: '3',
-    date: '2024-12-28',
-    amount: 15,
-    type: 'fee',
-    status: 'completed',
-    description: 'Monthly Platform Fee',
-    reference: 'FEE-2024-12',
-  },
-  {
-    id: '4',
-    date: '2024-12-15',
-    amount: 2000,
-    type: 'withdrawal',
-    status: 'completed',
-    description: 'Partial Withdrawal',
-    reference: 'WTH-2024-001',
-  },
-];
-
 export default function Payments() {
-  const [payments] = useState<Payment[]>(MOCK_PAYMENTS);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('date', { ascending: false });
+
+        if (!error && data) {
+          setPayments(data.map((p) => ({
+            id: p.id,
+            date: p.date,
+            amount: p.amount,
+            type: p.type,
+            status: p.status,
+            description: p.description,
+            reference: p.reference,
+          })));
+        }
+      } catch (err) {
+        console.error('Fetch payments error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPayments();
+  }, []);
 
   const getStatusBadge = (status: Payment['status']) => {
     const styles = {
@@ -197,7 +195,13 @@ export default function Payments() {
       </div>
 
       <Card title="Transaction History">
-        <Table data={payments} columns={columns} />
+        {isLoading ? (
+          <p className="text-gray-500 text-center py-8">Loading...</p>
+        ) : payments.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">No transactions yet.</p>
+        ) : (
+          <Table data={payments} columns={columns} />
+        )}
       </Card>
     </div>
   );

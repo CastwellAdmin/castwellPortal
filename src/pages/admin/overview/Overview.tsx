@@ -4,13 +4,12 @@ import { useMarketStore } from '../../../store/marketStore';
 import { useDocumentStore } from '../../../store/documentStore';
 import { useUserStore } from '../../../store/userStore';
 import { Card } from '../../../components/Card';
-import { BarChart } from '../../../components/charts/BarChart';
 import { FiUsers, FiFileText, FiTrendingUp, FiActivity } from 'react-icons/fi';
 
 export default function AdminOverview() {
   const { tickers, fetchTickers } = useMarketStore();
   const { documents, fetchDocuments } = useDocumentStore();
-  const { users } = useUserStore();
+  const { users, fetchUsers } = useUserStore();
 
   const totalUsers = users.length;
   const activeUsers = users.filter((u) => u.isActive).length;
@@ -19,17 +18,8 @@ export default function AdminOverview() {
   useEffect(() => {
     fetchTickers();
     fetchDocuments();
+    fetchUsers();
   }, []);
-
-  const userActivityData = [
-    { name: 'Mon', value: 45 },
-    { name: 'Tue', value: 52 },
-    { name: 'Wed', value: 48 },
-    { name: 'Thu', value: 61 },
-    { name: 'Fri', value: 55 },
-    { name: 'Sat', value: 32 },
-    { name: 'Sun', value: 28 },
-  ];
 
   return (
     <div className="space-y-6">
@@ -92,17 +82,6 @@ export default function AdminOverview() {
           </div>
         </Card>
       </div>
-
-      {/* User Activity Chart */}
-      <Card title="User Activity (Last 7 Days)">
-        <BarChart
-          data={userActivityData}
-          xKey="name"
-          yKey="value"
-          height={350}
-          color="#0ea5e9"
-        />
-      </Card>
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

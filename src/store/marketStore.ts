@@ -25,44 +25,6 @@ const DEFAULT_TICKERS = [
   { symbol: 'JNJ', name: 'Johnson & Johnson', sector: 'Healthcare', market: 'NYSE' },
 ];
 
-const MOCK_SECTORS: MarketSector[] = [
-  { name: 'Technology', performance: 1.2, volume: 245000000 },
-  { name: 'Healthcare', performance: -0.3, volume: 87000000 },
-  { name: 'Financial Services', performance: 0.8, volume: 156000000 },
-  { name: 'Consumer Goods', performance: 0.5, volume: 98000000 },
-  { name: 'Energy', performance: -1.1, volume: 67000000 },
-];
-
-const generatePriceHistory = (currentPrice: number): PriceHistory[] => {
-  const data: PriceHistory[] = [];
-  let price = currentPrice * 0.95;
-
-  for (let i = 30; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-
-    const open = price;
-    const change = price * (Math.random() - 0.5) * 0.03;
-    const close = price + change;
-    const high = Math.max(open, close) * (1 + Math.random() * 0.02);
-    const low = Math.min(open, close) * (1 - Math.random() * 0.02);
-    const volume = Math.floor(20000000 + Math.random() * 30000000);
-
-    data.push({
-      date: date.toISOString().split('T')[0],
-      open: Math.round(open * 100) / 100,
-      high: Math.round(high * 100) / 100,
-      low: Math.round(low * 100) / 100,
-      close: Math.round(close * 100) / 100,
-      volume,
-    });
-
-    price = close;
-  }
-
-  return data;
-};
-
 export const useMarketStore = create<MarketState>((set, get) => ({
   tickers: [],
   sectors: [],
@@ -91,7 +53,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
           price: quote?.c || 0,
           change: quote?.d || 0,
           changePercent: quote?.dp || 0,
-          volume: 0, // Finnhub basic API doesn't provide volume in quote endpoint
+          volume: 0,
         };
       });
 
@@ -103,8 +65,24 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   },
 
   fetchSectors: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    set({ sectors: MOCK_SECTORS });
+    // Derive sector data from current tickers
+    const tickers = get().tickers;
+    const sectorMap = new Map<string, { total: number; count: number }>();
+
+    for (const ticker of tickers) {
+      const existing = sectorMap.get(ticker.sector) || { total: 0, count: 0 };
+      existing.total += ticker.changePercent;
+      existing.count += 1;
+      sectorMap.set(ticker.sector, existing);
+    }
+
+    const sectors: MarketSector[] = Array.from(sectorMap.entries()).map(([name, data]) => ({
+      name,
+      performance: data.count > 0 ? Math.round((data.total / data.count) * 100) / 100 : 0,
+      volume: 0,
+    }));
+
+    set({ sectors });
   },
 
   fetchPriceHistory: async (symbol: string) => {
@@ -132,7 +110,6 @@ export const useMarketStore = create<MarketState>((set, get) => ({
       let priceHistory: PriceHistory[] = [];
 
       if (candleData && candleData.s === 'ok') {
-        // Convert Finnhub candle data to our format
         priceHistory = candleData.t.map((timestamp: number, index: number) => ({
           date: new Date(timestamp * 1000).toISOString().split('T')[0],
           open: Math.round(candleData.o[index] * 100) / 100,
@@ -141,9 +118,6 @@ export const useMarketStore = create<MarketState>((set, get) => ({
           close: Math.round(candleData.c[index] * 100) / 100,
           volume: candleData.v[index],
         }));
-      } else {
-        // Fallback to generated data if API fails
-        priceHistory = generatePriceHistory(ticker.price);
       }
 
       set({
@@ -154,13 +128,11 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     } catch (error) {
       console.error('Error fetching price history:', error);
       const ticker = get().tickers.find((t) => t.symbol === symbol);
-      if (ticker) {
-        set({
-          selectedTicker: ticker,
-          priceHistory: generatePriceHistory(ticker.price),
-          isLoading: false,
-        });
-      }
+      set({
+        selectedTicker: ticker || null,
+        priceHistory: [],
+        isLoading: false,
+      });
     }
   },
 

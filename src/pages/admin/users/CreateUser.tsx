@@ -8,26 +8,29 @@ import { FiArrowLeft } from 'react-icons/fi';
 
 export default function CreateUser() {
   const navigate = useNavigate();
-  const { createUser, getUserByEmail } = useUserStore();
+  const { createUser } = useUserStore();
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
-    role: 'user' as 'user' | 'admin',
+    role: 'user' as 'super_admin' | 'admin' | 'user',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
-    if (getUserByEmail(formData.email)) {
-      setError('A user with this email already exists.');
-      return;
+    try {
+      await createUser(formData);
+      navigate('/admin/users');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create user.');
+    } finally {
+      setIsLoading(false);
     }
-
-    createUser(formData);
-    navigate('/admin/users');
   };
 
   return (
@@ -69,12 +72,13 @@ export default function CreateUser() {
             <select
               value={formData.role}
               onChange={(e) =>
-                setFormData({ ...formData, role: e.target.value as 'user' | 'admin' })
+                setFormData({ ...formData, role: e.target.value as 'super_admin' | 'admin' | 'user' })
               }
               className="input"
             >
               <option value="user">User</option>
-              <option value="admin">Administrator</option>
+              <option value="admin">Admin</option>
+              <option value="super_admin">Super Admin</option>
             </select>
           </div>
 
@@ -85,7 +89,7 @@ export default function CreateUser() {
           )}
 
           <div className="pt-4 flex space-x-3">
-            <Button type="submit">Create User</Button>
+            <Button type="submit" isLoading={isLoading}>Create User</Button>
             <Button
               type="button"
               variant="outline"

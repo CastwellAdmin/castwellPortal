@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserStore } from '../../../store/userStore';
 import { Card } from '../../../components/Card';
@@ -8,11 +9,19 @@ import { FiPlus, FiEdit, FiTrash2 } from 'react-icons/fi';
 
 export default function UserManagement() {
   const navigate = useNavigate();
-  const { users, deleteUser } = useUserStore();
+  const { users, isLoading, fetchUsers, deleteUser } = useUserStore();
 
-  const handleDelete = (userId: string) => {
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleDelete = async (userId: string) => {
     if (confirm('Are you sure you want to delete this user?')) {
-      deleteUser(userId);
+      try {
+        await deleteUser(userId);
+      } catch {
+        alert('Failed to delete user.');
+      }
     }
   };
 
@@ -32,7 +41,9 @@ export default function UserManagement() {
       accessor: (row: User) => (
         <span
           className={`px-2 py-1 text-xs font-medium rounded-full ${
-            row.role === 'admin'
+            row.role === 'super_admin'
+              ? 'bg-red-100 text-red-800'
+              : row.role === 'admin'
               ? 'bg-purple-100 text-purple-800'
               : 'bg-blue-100 text-blue-800'
           }`}
@@ -92,7 +103,7 @@ export default function UserManagement() {
   ];
 
   const activeUsers = users.filter((u) => u.isActive).length;
-  const adminUsers = users.filter((u) => u.role === 'admin').length;
+  const adminUsers = users.filter((u) => u.role === 'admin' || u.role === 'super_admin').length;
 
   return (
     <div className="space-y-6">
@@ -122,11 +133,15 @@ export default function UserManagement() {
       </div>
 
       <Card title="All Users">
-        <Table
-          data={users}
-          columns={columns}
-          onRowClick={(user) => navigate(`/admin/users/${user.id}`)}
-        />
+        {isLoading ? (
+          <p className="text-gray-500 py-4">Loading users...</p>
+        ) : (
+          <Table
+            data={users}
+            columns={columns}
+            onRowClick={(user) => navigate(`/admin/users/${user.id}`)}
+          />
+        )}
       </Card>
     </div>
   );

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase, isDemoMode } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import type { PortfolioAsset, PortfolioSummary, PerformanceData } from '../types';
 
 interface PortfolioState {
@@ -10,26 +10,6 @@ interface PortfolioState {
   fetchPerformanceHistory: () => Promise<void>;
 }
 
-const generatePerformanceHistory = (): PerformanceData[] => {
-  const data: PerformanceData[] = [];
-  const startValue = 50000;
-  let currentValue = startValue;
-
-  for (let i = 30; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-
-    currentValue = currentValue * (1 + (Math.random() - 0.48) * 0.02);
-
-    data.push({
-      date: date.toISOString().split('T')[0],
-      value: Math.round(currentValue),
-    });
-  }
-
-  return data;
-};
-
 export const usePortfolioStore = create<PortfolioState>((set) => ({
   portfolio: null,
   performanceHistory: [],
@@ -37,11 +17,6 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
 
   fetchPortfolio: async () => {
     set({ isLoading: true });
-
-    if (isDemoMode) {
-      set({ portfolio: null, isLoading: false });
-      return;
-    }
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -96,11 +71,6 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
   },
 
   fetchPerformanceHistory: async () => {
-    if (isDemoMode) {
-      set({ performanceHistory: generatePerformanceHistory() });
-      return;
-    }
-
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -124,13 +94,11 @@ export const usePortfolioStore = create<PortfolioState>((set) => ({
         }));
         set({ performanceHistory: performanceData });
       } else {
-        // Fallback to generated data if no performance history exists
-        set({ performanceHistory: generatePerformanceHistory() });
+        set({ performanceHistory: [] });
       }
     } catch (error) {
       console.error('Fetch performance history error:', error);
-      // Fallback to generated data on error
-      set({ performanceHistory: generatePerformanceHistory() });
+      set({ performanceHistory: [] });
     }
   },
 }));

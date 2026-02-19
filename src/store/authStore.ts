@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase, isDemoMode } from '../lib/supabase';
-import { useUserStore } from './userStore';
+import { supabase } from '../lib/supabase';
 import type { User } from '../types';
 
 interface AuthState {
@@ -22,75 +21,81 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
 
       login: async (email: string, password: string) => {
-        if (isDemoMode) {
-          const stored = useUserStore.getState().authenticate(email, password);
-          if (stored) {
-            set({
-              user: {
-                id: stored.id,
-                email: stored.email,
-                name: stored.name,
-                role: stored.role,
-                createdAt: stored.createdAt,
-                lastLogin: new Date().toISOString(),
-                isActive: stored.isActive,
-              },
-              isAuthenticated: true,
-              isLoading: false,
-            });
-            return true;
-          }
-          return false;
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          throw new Error(error.message);
         }
 
-        try {
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
+        if (!data.user) {
+          throw new Error('Login failed. Please try again.');
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profile) {
+          await supabase
+            .from('profiles')
+            .update({ last_login: new Date().toISOString() })
+            .eq('id', profile.id);
+
+          set({
+            user: {
+              id: profile.id,
+              email: profile.email,
+              name: profile.name,
+              role: profile.role,
+              createdAt: profile.created_at,
+              lastLogin: new Date().toISOString(),
+              isActive: profile.is_active,
+            },
+            isAuthenticated: true,
+            isLoading: false,
           });
-
-          if (error) throw error;
-
-          if (data.user) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', data.user.id)
-              .single();
-
-            if (profile) {
-              await supabase
-                .from('profiles')
-                .update({ last_login: new Date().toISOString() })
-                .eq('id', profile.id);
-
-              set({
-                user: {
-                  id: profile.id,
-                  email: profile.email,
-                  name: profile.name,
-                  role: profile.role,
-                  createdAt: profile.created_at,
-                  lastLogin: new Date().toISOString(),
-                  isActive: profile.is_active,
-                },
-                isAuthenticated: true,
-                isLoading: false,
-              });
-              return true;
-            }
-          }
-
-          return false;
-        } catch (error) {
-          console.error('Login error:', error);
-          return false;
+          return true;
         }
+
+        // User exists in Supabase Auth but no profile - create one
+        const newProfile = {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.email?.split('@')[0] || 'User',
+          role: 'user',
+          is_active: true,
+          created_at: new Date().toISOString(),
+          last_login: new Date().toISOString(),
+        };
+
+        await supabase.from('profiles').insert(newProfile);
+
+        set({
+          user: {
+            id: newProfile.id,
+            email: newProfile.email || email,
+            name: newProfile.name,
+            role: 'user',
+            createdAt: newProfile.created_at,
+            lastLogin: newProfile.last_login,
+            isActive: true,
+          },
+          isAuthenticated: true,
+          isLoading: false,
+        });
+        return true;
       },
 
       logout: async () => {
-        if (!isDemoMode) {
+        try {
           await supabase.auth.signOut();
+        } catch {
+          // Ignore signout errors
         }
         set({ user: null, isAuthenticated: false });
       },
@@ -98,14 +103,6 @@ export const useAuthStore = create<AuthState>()(
       updateUser: async (userData: Partial<User>) => {
         const currentUser = useAuthStore.getState().user;
         if (!currentUser) return;
-
-        if (isDemoMode) {
-          useUserStore.getState().updateUser(currentUser.id, userData);
-          set((state) => ({
-            user: state.user ? { ...state.user, ...userData } : null,
-          }));
-          return;
-        }
 
         try {
           const { error } = await supabase
@@ -120,18 +117,14 @@ export const useAuthStore = create<AuthState>()(
             set((state) => ({
               user: state.user ? { ...state.user, ...userData } : null,
             }));
+            return;
           }
         } catch (error) {
-          console.error('Update user error:', error);
+          console.error('Profile update failed:', error);
         }
       },
 
       checkSession: async () => {
-        if (isDemoMode) {
-          set((state) => ({ ...state, isLoading: false }));
-          return;
-        }
-
         try {
           const { data: { session } } = await supabase.auth.getSession();
 
@@ -160,6 +153,7 @@ export const useAuthStore = create<AuthState>()(
             }
           }
 
+          // No active Supabase session - clear any stale persisted state
           set({ user: null, isAuthenticated: false, isLoading: false });
         } catch (error) {
           console.error('Session check error:', error);
