@@ -9,11 +9,13 @@ import { FiArrowLeft } from 'react-icons/fi';
 export default function UserDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { users, fetchUsers, getUser, updateUser, resetPassword } = useUserStore();
+  const { users, fetchUsers, getUser, updateUser, resetPassword, setPassword } = useUserStore();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [passwordMsg, setPasswordMsg] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -75,6 +77,22 @@ export default function UserDetail() {
       setPasswordMsg('Password reset email sent to ' + user.email);
     } catch (err) {
       setPasswordMsg(err instanceof Error ? err.message : 'Failed to send reset email.');
+    }
+  };
+
+  const handleSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !newPassword.trim()) return;
+    setPasswordMsg('');
+    setIsResetting(true);
+    try {
+      await setPassword(id, newPassword);
+      setPasswordMsg('Password updated successfully.');
+      setNewPassword('');
+    } catch (err) {
+      setPasswordMsg(err instanceof Error ? err.message : 'Failed to set password.');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -183,15 +201,37 @@ export default function UserDetail() {
       </Card>
 
       <Card title="Security">
-        <div className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Send a password reset email so the user can set a new password.
-          </p>
-          <Button variant="outline" onClick={handleResetPassword}>
-            Send Password Reset Email
-          </Button>
+        <div className="space-y-6">
+          <form onSubmit={handleSetPassword} className="space-y-3">
+            <p className="text-sm font-medium text-gray-700">Set New Password</p>
+            <div className="flex space-x-3">
+              <Input
+                label=""
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                required
+              />
+              <Button type="submit" isLoading={isResetting} className="mt-1 shrink-0">
+                Set Password
+              </Button>
+            </div>
+          </form>
+
+          <div className="border-t pt-4 space-y-3">
+            <p className="text-sm text-gray-600">
+              Or send a password reset email so the user can set their own.
+            </p>
+            <Button variant="outline" onClick={handleResetPassword}>
+              Send Password Reset Email
+            </Button>
+          </div>
+
           {passwordMsg && (
-            <p className="text-sm text-gray-700 mt-2">{passwordMsg}</p>
+            <p className={`text-sm mt-2 ${passwordMsg.includes('success') ? 'text-green-600' : 'text-gray-700'}`}>
+              {passwordMsg}
+            </p>
           )}
         </div>
       </Card>

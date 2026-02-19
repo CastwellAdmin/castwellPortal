@@ -12,6 +12,7 @@ interface UserStoreState {
   updateUser: (id: string, data: Partial<{ name: string; email: string; role: UserRole; isActive: boolean }>) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  setPassword: (userId: string, newPassword: string) => Promise<void>;
 }
 
 export const useUserStore = create<UserStoreState>()(
@@ -128,6 +129,14 @@ export const useUserStore = create<UserStoreState>()(
 
     resetPassword: async (email: string) => {
       const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) throw new Error(error.message);
+    },
+
+    setPassword: async (userId: string, newPassword: string) => {
+      const { error } = await supabase.rpc('admin_reset_password', {
+        target_user_id: userId,
+        new_password: newPassword,
+      });
       if (error) throw new Error(error.message);
     },
   })
