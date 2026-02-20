@@ -251,6 +251,9 @@ CREATE POLICY "Admins can insert audit logs" ON audit_logs
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
+  -- Auto-confirm email so login works without email verification
+  UPDATE auth.users SET email_confirmed_at = now() WHERE id = NEW.id AND email_confirmed_at IS NULL;
+
   INSERT INTO public.profiles (id, username, email, name, role, is_active, created_at)
   VALUES (
     NEW.id,
@@ -277,6 +280,12 @@ CREATE OR REPLACE FUNCTION public.get_email_by_username(lookup_username TEXT)
 RETURNS TEXT AS $$
   SELECT email FROM public.profiles WHERE username = lookup_username LIMIT 1;
 $$ LANGUAGE sql SECURITY DEFINER;
+
+-- Allow unauthenticated (anon) users to call the lookup function for login
+GRANT EXECUTE ON FUNCTION public.get_email_by_username(TEXT) TO anon, authenticated;
+
+-- Fix any existing users whose email is not yet confirmed
+UPDATE auth.users SET email_confirmed_at = now() WHERE email_confirmed_at IS NULL;
 
 -- ============================================
 -- 11. SEED DATA
