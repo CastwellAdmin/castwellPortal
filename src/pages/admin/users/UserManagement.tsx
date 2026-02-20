@@ -32,8 +32,8 @@ export default function UserManagement() {
       className: 'font-medium text-gray-900',
     },
     {
-      header: 'Email',
-      accessor: 'email' as keyof User,
+      header: 'User ID',
+      accessor: 'username' as keyof User,
       className: 'text-gray-600',
     },
     {

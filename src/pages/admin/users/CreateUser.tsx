@@ -13,6 +13,7 @@ export default function CreateUser() {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
+    username: '',
     email: '',
     password: '',
     role: 'user' as 'super_admin' | 'admin' | 'user',
@@ -48,6 +49,14 @@ export default function CreateUser() {
             label="Full Name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+          />
+
+          <Input
+            label="User ID"
+            value={formData.username}
+            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+            placeholder="e.g. jsmith"
             required
           />
 

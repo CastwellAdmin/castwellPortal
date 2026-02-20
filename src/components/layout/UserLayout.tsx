@@ -82,7 +82,7 @@ export default function UserLayout() {
             Welcome back, {user?.name}
           </h2>
           <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">{user?.email}</span>
+            <span className="text-sm text-gray-600">{user?.username}</span>
           </div>
         </header>
 

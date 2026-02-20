@@ -7,7 +7,7 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   updateUser: (user: Partial<User>) => Promise<void>;
   checkSession: () => Promise<void>;
@@ -20,14 +20,28 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: true,
 
-      login: async (email: string, password: string) => {
+      login: async (username: string, password: string) => {
+        // Look up email by username via secure RPC function
+        const { data: email, error: rpcError } = await supabase.rpc('get_email_by_username', {
+          lookup_username: username,
+        });
+
+        if (rpcError || !email) {
+          throw new Error('Invalid username or password');
+        }
+
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) {
-          throw new Error(error.message);
+          if (error.status === 500) {
+            throw new Error(
+              'Authentication service error. Please check that email confirmations are disabled in your Supabase dashboard (Authentication → Providers → Email).'
+            );
+          }
+          throw new Error('Invalid username or password');
         }
 
         if (!data.user) {
@@ -49,6 +63,7 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: {
               id: profile.id,
+              username: profile.username,
               email: profile.email,
               name: profile.name,
               role: profile.role,
@@ -65,6 +80,7 @@ export const useAuthStore = create<AuthState>()(
         // User exists in Supabase Auth but no profile - create one
         const newProfile = {
           id: data.user.id,
+          username: username,
           email: data.user.email,
           name: data.user.email?.split('@')[0] || 'User',
           role: 'user',
@@ -78,6 +94,7 @@ export const useAuthStore = create<AuthState>()(
         set({
           user: {
             id: newProfile.id,
+            username: newProfile.username,
             email: newProfile.email || email,
             name: newProfile.name,
             role: 'user',
@@ -139,6 +156,7 @@ export const useAuthStore = create<AuthState>()(
               set({
                 user: {
                   id: profile.id,
+                  username: profile.username,
                   email: profile.email,
                   name: profile.name,
                   role: profile.role,
