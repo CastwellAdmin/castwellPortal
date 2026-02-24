@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { useAuthStore } from './authStore';
 import type { Document } from '../types';
 
 interface DocumentState {
@@ -20,7 +21,7 @@ export const useDocumentStore = create<DocumentState>((set) => ({
     set({ isLoading: true });
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = useAuthStore.getState().user;
 
       if (!user) {
         set({ documents: [], isLoading: false });

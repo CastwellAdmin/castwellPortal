@@ -2,17 +2,18 @@ import { useEffect, useState } from 'react';
 import { Card } from '../../../components/Card';
 import { Table } from '../../../components/tables/Table';
 import { supabase } from '../../../lib/supabase';
+import { useAuthStore } from '../../../store/authStore';
 import type { Payment } from '../../../types';
 import { FiDownload, FiArrowUp, FiArrowDown, FiDollarSign } from 'react-icons/fi';
 
 export default function Payments() {
+  const { user } = useAuthStore();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchPayments = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           setIsLoading(false);
           return;

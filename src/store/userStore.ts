@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase, supabaseNoSession } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import type { User, UserRole } from '../types';
 
 interface UserStoreState {
@@ -11,7 +11,6 @@ interface UserStoreState {
   createUser: (data: { name: string; username: string; email: string; password: string; role: UserRole }) => Promise<User>;
   updateUser: (id: string, data: Partial<{ name: string; email: string; role: UserRole; isActive: boolean }>) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
   setPassword: (userId: string, newPassword: string) => Promise<void>;
 }
 
@@ -24,7 +23,7 @@ export const useUserStore = create<UserStoreState>()(
       set({ isLoading: true });
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, username, email, name, role, is_active, created_at, last_login')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -51,44 +50,24 @@ export const useUserStore = create<UserStoreState>()(
     getUserByEmail: (email) => get().users.find((u) => u.email === email),
 
     createUser: async (data) => {
-      // Create auth user via signUp on a non-persistent client
-      // so the admin's session isn't replaced
-      const { data: signUpData, error: signUpError } = await supabaseNoSession.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          data: {
-            name: data.name,
-            username: data.username,
-            role: data.role,
-          },
-        },
+      const { data: result, error } = await supabase.rpc('create_user_with_password', {
+        p_username: data.username,
+        p_email: data.email,
+        p_password: data.password,
+        p_name: data.name,
+        p_role: data.role,
       });
 
-      if (signUpError) {
-        throw new Error(signUpError.message);
-      }
-
-      if (!signUpData.user) {
-        throw new Error('Failed to create user account.');
-      }
-
-      // Wait briefly for the database trigger to create the profile
-      await new Promise((r) => setTimeout(r, 500));
-
-      // Ensure the profile has the correct role, name, and username
-      await supabase
-        .from('profiles')
-        .update({ role: data.role, name: data.name, username: data.username })
-        .eq('id', signUpData.user.id);
+      if (error) throw new Error(error.message);
+      if (!result.success) throw new Error(result.error);
 
       const newUser: User = {
-        id: signUpData.user.id,
-        username: data.username,
-        email: data.email,
-        name: data.name,
-        role: data.role,
-        createdAt: new Date().toISOString(),
+        id: result.user.id,
+        username: result.user.username,
+        email: result.user.email,
+        name: result.user.name,
+        role: result.user.role,
+        createdAt: result.user.created_at,
         isActive: true,
       };
 
@@ -130,17 +109,14 @@ export const useUserStore = create<UserStoreState>()(
       }));
     },
 
-    resetPassword: async (email: string) => {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
-      if (error) throw new Error(error.message);
-    },
-
     setPassword: async (userId: string, newPassword: string) => {
-      const { error } = await supabase.rpc('admin_reset_password', {
-        target_user_id: userId,
-        new_password: newPassword,
+      const { data: result, error } = await supabase.rpc('change_password', {
+        p_user_id: userId,
+        p_new_password: newPassword,
       });
+
       if (error) throw new Error(error.message);
+      if (!result.success) throw new Error(result.error);
     },
   })
 );

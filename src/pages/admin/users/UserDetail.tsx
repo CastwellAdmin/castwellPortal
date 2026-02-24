@@ -9,7 +9,7 @@ import { FiArrowLeft } from 'react-icons/fi';
 export default function UserDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { users, fetchUsers, getUser, updateUser, resetPassword, setPassword } = useUserStore();
+  const { users, fetchUsers, getUser, updateUser, setPassword } = useUserStore();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -67,16 +67,6 @@ export default function UserDetail() {
       setError(err instanceof Error ? err.message : 'Failed to update user.');
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleResetPassword = async () => {
-    setPasswordMsg('');
-    try {
-      await resetPassword(user.email);
-      setPasswordMsg('Password reset email sent to ' + user.email);
-    } catch (err) {
-      setPasswordMsg(err instanceof Error ? err.message : 'Failed to send reset email.');
     }
   };
 
@@ -218,15 +208,6 @@ export default function UserDetail() {
               </Button>
             </div>
           </form>
-
-          <div className="border-t pt-4 space-y-3">
-            <p className="text-sm text-gray-600">
-              Or send a password reset email so the user can set their own.
-            </p>
-            <Button variant="outline" onClick={handleResetPassword}>
-              Send Password Reset Email
-            </Button>
-          </div>
 
           {passwordMsg && (
             <p className={`text-sm mt-2 ${passwordMsg.includes('success') ? 'text-green-600' : 'text-gray-700'}`}>

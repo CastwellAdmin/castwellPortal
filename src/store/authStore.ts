@@ -21,86 +21,31 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
 
       login: async (username: string, password: string) => {
-        // Look up email by username via secure RPC function
-        const { data: email, error: rpcError } = await supabase.rpc('get_email_by_username', {
-          lookup_username: username,
-        });
-
-        if (rpcError || !email) {
-          throw new Error('Invalid username or password');
-        }
-
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+        const { data, error } = await supabase.rpc('authenticate_user', {
+          p_username: username,
+          p_password: password,
         });
 
         if (error) {
-          if (error.status === 500) {
-            throw new Error(
-              'Authentication service error. Please check that email confirmations are disabled in your Supabase dashboard (Authentication → Providers → Email).'
-            );
-          }
-          throw new Error('Invalid username or password');
+          throw new Error('Authentication failed. Please try again.');
         }
 
-        if (!data.user) {
-          throw new Error('Login failed. Please try again.');
+        if (!data.success) {
+          throw new Error(data.error || 'Invalid username or password');
         }
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-
-        if (profile) {
-          await supabase
-            .from('profiles')
-            .update({ last_login: new Date().toISOString() })
-            .eq('id', profile.id);
-
-          set({
-            user: {
-              id: profile.id,
-              username: profile.username,
-              email: profile.email,
-              name: profile.name,
-              role: profile.role,
-              createdAt: profile.created_at,
-              lastLogin: new Date().toISOString(),
-              isActive: profile.is_active,
-            },
-            isAuthenticated: true,
-            isLoading: false,
-          });
-          return true;
-        }
-
-        // User exists in Supabase Auth but no profile - create one
-        const newProfile = {
-          id: data.user.id,
-          username: username,
-          email: data.user.email,
-          name: data.user.email?.split('@')[0] || 'User',
-          role: 'user',
-          is_active: true,
-          created_at: new Date().toISOString(),
-          last_login: new Date().toISOString(),
-        };
-
-        await supabase.from('profiles').insert(newProfile);
+        const profile = data.user;
 
         set({
           user: {
-            id: newProfile.id,
-            username: newProfile.username,
-            email: newProfile.email || email,
-            name: newProfile.name,
-            role: 'user',
-            createdAt: newProfile.created_at,
-            lastLogin: newProfile.last_login,
-            isActive: true,
+            id: profile.id,
+            username: profile.username,
+            email: profile.email,
+            name: profile.name,
+            role: profile.role,
+            createdAt: profile.created_at,
+            lastLogin: profile.last_login,
+            isActive: profile.is_active,
           },
           isAuthenticated: true,
           isLoading: false,
@@ -109,11 +54,6 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
-        try {
-          await supabase.auth.signOut();
-        } catch {
-          // Ignore signout errors
-        }
         set({ user: null, isAuthenticated: false });
       },
 
@@ -143,38 +83,26 @@ export const useAuthStore = create<AuthState>()(
 
       checkSession: async () => {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-
-          if (session?.user) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-
-            if (profile) {
-              set({
-                user: {
-                  id: profile.id,
-                  username: profile.username,
-                  email: profile.email,
-                  name: profile.name,
-                  role: profile.role,
-                  createdAt: profile.created_at,
-                  lastLogin: profile.last_login,
-                  isActive: profile.is_active,
-                },
-                isAuthenticated: true,
-                isLoading: false,
-              });
-              return;
-            }
+          const currentUser = useAuthStore.getState().user;
+          if (!currentUser) {
+            set({ isLoading: false });
+            return;
           }
 
-          // No active Supabase session - clear any stale persisted state
-          set({ user: null, isAuthenticated: false, isLoading: false });
-        } catch (error) {
-          console.error('Session check error:', error);
+          // Verify the persisted user still exists and is active
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('id, is_active')
+            .eq('id', currentUser.id)
+            .single();
+
+          if (error || !profile || !profile.is_active) {
+            set({ user: null, isAuthenticated: false, isLoading: false });
+            return;
+          }
+
+          set({ isLoading: false });
+        } catch {
           set({ user: null, isAuthenticated: false, isLoading: false });
         }
       },

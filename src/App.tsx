@@ -4,9 +4,6 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 
 // Auth pages
 import Login from './pages/auth/Login';
-import ForgotPassword from './pages/auth/ForgotPassword';
-import ResetPassword from './pages/auth/ResetPassword';
-
 // User pages
 import UserLayout from './components/layout/UserLayout';
 import UserOverview from './pages/user/overview/Overview';
@@ -47,9 +44,6 @@ function App() {
           path="/login"
           element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
         />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-
         {/* User routes */}
         <Route
           path="/dashboard"
